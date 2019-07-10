@@ -108,3 +108,72 @@ function process(R::AbstractVector{<:NTuple{M, S}},
         log.(_R[i:M:end])./dts
     end
 end
+
+# function mean_expansion_rate(R::AbstractVector{<:NTuple{M, S}},
+#                              T::Real) where {M, S}
+#     # note we skip the first element as R[1] = ones(M)
+#     ntuple(M) do i
+#         sum(log(R[j][i]) for j = 2:length(R))/T
+#     end
+# end
+
+# function dowork(Lex, Lim,
+#                 N::Int, dt::Real,
+#                 store::AbstractStorage,
+#                 methodFun;
+#                 oneevery::Int=1,
+#                 tol::Real = 1e-7,
+#                 maxiter::Int=10,
+#                 verbose::Bool=true)
+
+#     # this is the overall span
+#     span = timespan(store)
+
+#     # and its length
+#     T = span[2] - span[1]
+
+#     # one element
+#     x = similar(samples(store)[1])
+
+#     # dependency list
+#     deps = calldeps(N, false);
+
+#     # initial conditions
+#     vs = couple(init_IC(N, x)...);
+
+#     # and the integrator
+#     ψ = flow(opcouple(N, Lex),
+#              opcouple(N, Lim),
+#              deps,
+#              methodFun(couplecopy(N, x), :TAN),
+#              TimeStepFromStorage(dt))
+
+#     # define monitor
+#     mon = Monitor(vs,
+#                   vs->gsortho!(vs, Val(false));
+#                   oneevery=oneevery);
+
+#     # tun one iteration
+#     ψ(vs, store, span, reset!(mon));
+#     λs_prev = mean_expansion_rate(samples(mon), T)
+
+#     for i = 1:maxiter
+
+#         ψ(vs, store, span, reset!(mon));
+#         λs_next = mean_expansion_rate(samples(mon), T)
+
+#         # debug
+#         verbose == true &&
+#             @printf "%s\n" join(map(el->"$(round(el; digits=18)) ", λs_next))
+
+#         # convergence?
+#         if maximum(abs, λs_next .- λs_prev) < tol
+#             return true, i, λs_next
+#         end
+
+#         λs_prev = λs_next
+#     end
+
+#     return false, maxiter, λs_prev
+#     return nothing
+# end
