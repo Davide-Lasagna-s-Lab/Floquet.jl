@@ -185,7 +185,7 @@ function floquet(Lex, Lim,
         resize!(logλs, 0)
 
         # update the basis vectors
-        @all qs_init .= qs_next
+        qs_init .= qs_next
     end
 
     return false, maxiter, logλs, fulltrace
