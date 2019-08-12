@@ -40,7 +40,7 @@ tolerance `tol`, and return a vector of indices containing the `top-left`
 locations of the blocks. Two-by-two blocks that look like the identity
 matrix are not considered.
 """
-function pair_locations(B::AbstractMatrix, tol::Real=1e-12)
+function pair_locations(B::AbstractMatrix, θtol::Real=1e-12)
     N = size(B, 1)
     idxs = Int[]
     i = 1
@@ -52,16 +52,15 @@ function pair_locations(B::AbstractMatrix, tol::Real=1e-12)
         s1 = B[i, i+1]
         s2 = B[i+1, i]
         
-        # detected pair at 2x2 sub-block
-        if (abs(c1 - c2) < tol && abs(s1 + s2) < tol)
-            # skip trivial case of 2x2 identity block (with care to signs)
-            if !(abs(abs(c1)-1)         < tol && 
-                 abs(abs(c2)-1)         < tol && 
-                 max(abs.((s1, s2))...) < tol)
-                push!(idxs, i)
-                i += 1
-                i == N && break 
-            end
+        # we measure the angle induced by the two-by-two block on the vector
+        # (1, 1) and check whether the rotation mod pi is larger than tol. We 
+        # also check the entries c1, c2 and s1, s2 are similar enough, so we 
+        # can consider the block a 2x2 rotation matrix
+        θ = atan(c2 + s2, c1 + s1)
+        if abs(mod(θ, π) - π/4) > θtol && (abs(c1 - c2) < θtol && abs(s1 + s2) < θtol)
+            push!(idxs, i)
+            i += 1
+            i == N && break 
         end
 
         i += 1
@@ -76,8 +75,59 @@ function floquet(Lex, Lim,
                  methodFun;
                  oneevery::Int=1,
                  tol::Real = 1e-7,
+                 θtol::Real = 1e-7,
                  maxiter::Int=10,
                  verbose::Bool=true)
+    # one element
+    x = similar(samples(store)[1])
+
+    # dependency list
+    deps = calldeps(N, false);
+
+    # and the integrator
+    ψ = flow(opcouple(N, Lex),
+             opcouple(N, Lim),
+             deps,
+             methodFun(couplecopy(N, x), ContinuousMode()),
+             TimeStepFromStorage(dt))
+
+    return _floquet(ψ, N, store, oneevery, λtol, θtol, maxiter, verbose)
+end
+
+function floquet(L,
+                 N::Int, dt::Real,
+                 store::AbstractStorage,
+                 methodFun;
+                 oneevery::Int=1,
+                 λtol::Real = 1e-7,
+                 θtol::Real = 1e-7,
+                 maxiter::Int=10,
+                 verbose::Bool=true)
+
+    # one element
+    x = similar(samples(store)[1])
+
+    # dependency list
+    deps = calldeps(N, false);
+
+    # and the integrator
+    ψ = flow(opcouple(N, L),
+             deps,
+             methodFun(couplecopy(N, x), ContinuousMode()),
+             TimeStepFromStorage(dt))
+
+    return _floquet(ψ, N, store, oneevery, λtol,  θtol, maxiter, verbose)
+end
+
+# actual routine
+function _floquet(ψ,
+                  N::Int,
+                  store::AbstractStorage,
+                  oneevery::Int=1,
+                  λtol::Real = 1e-7,
+                  θtol::Real = 1e-7,
+                  maxiter::Int=10,
+                  verbose::Bool=true)
 
     # this is the overall span
     span = timespan(store)
@@ -88,19 +138,9 @@ function floquet(Lex, Lim,
     # one element
     x = similar(samples(store)[1])
 
-    # dependency list
-    deps = calldeps(N, false);
-
     # initial conditions
     qs_init = couple(init_IC(N, x)...);
     qs_next = couple(init_IC(N, x)...);
-
-    # and the integrator
-    ψ = flow(opcouple(N, Lex),
-             opcouple(N, Lim),
-             deps,
-             methodFun(couplecopy(N, x), :TAN),
-             TimeStepFromStorage(dt))
 
     # define monitor
     mon = Monitor(qs_init,
@@ -129,7 +169,7 @@ function floquet(Lex, Lim,
         Q = procrustes(qs_init, qs_next, false)
 
         # find pairs of cc eigenvalues
-        idxs_2x2 = pair_locations(Q, tol)
+        idxs_2x2 = pair_locations(Q, θtol)
 
         # the others are 1x1
         idxs_1x1 = [i for i = 1:N if (i ∉ idxs_2x2) && (i-1 ∉ idxs_2x2)]
@@ -176,7 +216,7 @@ function floquet(Lex, Lim,
         end
 
         # check convergence of the eigenvalues
-        if maximum(abs, logλs .- logλs_old) < tol
+        if maximum(abs, logλs .- logλs_old) < λtol
             return true, iter, logλs, fulltrace
         end
 
