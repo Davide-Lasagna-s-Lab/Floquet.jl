@@ -74,7 +74,7 @@ function floquet(Lex, Lim,
                  store::AbstractStorage,
                  methodFun;
                  oneevery::Int=1,
-                 tol::Real = 1e-7,
+                 λtol::Real = 1e-7,
                  θtol::Real = 1e-7,
                  maxiter::Int=10,
                  verbose::Bool=true)
