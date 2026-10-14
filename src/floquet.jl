@@ -69,8 +69,8 @@ one, until the log-multipliers change by less than `λtol`.
 
 `L` is the linearised operator, a callable `L(t, u, y, dydt)` that writes
 in `dydt` the action on the tangent vector `y` of the Jacobian at the base
-state `u`, interpolated from `store` at time `t`. The function makes `N`
-deep copies of `L` (and of `A`), so these may own work buffers.
+state `u`, interpolated from `store` at time `t`. `L` and `A` are called
+for one tangent vector at a time, so they may own work buffers.
 
 `store` holds one period of the orbit, for instance a `RAMStorage` built
 with `period=T` and `storelast=false` and filled by integrating the orbit
@@ -160,11 +160,13 @@ function floquet(L,
     qs_next = copy(qs_init)
 
     # ---- tangent flow ----
-    # N independent copies of the linearised equations, each one seeing only
-    # its own tangent vector and the base orbit interpolated from `store`
+    # N linearised equations, each one seeing only its own tangent vector and
+    # the base orbit interpolated from `store`. They share `L` and `A`, which
+    # are called for one vector at a time. Copies would duplicate the FFT
+    # plans that an operator may own, which must not be copied.
     scheme = getfield(Flows, method) # the Flows scheme named `method`
-    ψ      = flow(couple(ntuple(i -> deepcopy(L), N)...),
-                  couple(ntuple(i -> deepcopy(A), N)...),
+    ψ      = flow(couple(ntuple(i -> L, N)...),
+                  couple(ntuple(i -> A, N)...),
                   CallDependency(ntuple(i -> (i,), N)...),
                   scheme(couplecopy(N, x), ContinuousMode(false)),
                   TimeStepFromStorage(dt))

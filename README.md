@@ -137,8 +137,9 @@ out = floquet(L, N, dt, store; kwargs...)
 
 `L` is the linearised operator. It is a callable `L(t, u, y, dydt)` that
 writes in `dydt` the Jacobian at the base state `u` applied to the tangent
-vector `y`. The base state is interpolated from `store` at time `t`. The
-function makes `N` deep copies of `L`, so `L` may own work buffers.
+vector `y`. The base state is interpolated from `store` at time `t`. `L` is
+called for one tangent vector at a time, so it may own work buffers, such as
+FFT plans.
 
 `N` is the number of tangent vectors, hence of exponents. `dt` is the time
 step of the linearised equations.
