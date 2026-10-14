@@ -90,6 +90,11 @@ relative periodic orbits. `dt` is the time step of the tangent integration.
     at the end of every period, before the Procrustes step. For a relative
     periodic orbit it applies the symmetry operation that maps the final
     state of the orbit back onto the initial state.
+  - `init = nothing`: initial tangent vectors, `N` states of the type of the
+    samples of `store`, orthonormalised before use. The default is the first
+    `N` canonical directions, `y[i] = 1`. Pass `init` when these are not
+    meaningful directions of the state, for instance for Fourier fields with
+    padding or symmetry constraints.
   - `λtol = 1e-7`: tolerance on the change of the log-multipliers between
     two consecutive periods.
   - `θtol = 1e-7`: tolerance used to detect the 2x2 rotation blocks of the
@@ -115,6 +120,7 @@ function floquet(L,
                  method::Symbol=:RK4,
                  oneevery::Int=1,
                  shift=identity,
+                 init=nothing,
                  λtol::Real=1e-7,
                  θtol::Real=1e-7,
                  maxiter::Int=50,
@@ -129,6 +135,8 @@ function floquet(L,
                             ":CB3R2R3c, :CB3R2R3e or :CB4R3R4"))
     (method !== :RK4 || A === nothing) ||
         throw(ArgumentError("method :RK4 is explicit, use an IMEX method with A"))
+    (init === nothing || length(init) == N) ||
+        throw(ArgumentError("init must hold N = $N tangent vectors"))
     (!isperiodic(store) || period(store) - ts[end] > (ts[2] - ts[1])/2) ||
         throw(ArgumentError("periodic storage holds a sample at or near t = T, " *
                             "build it with storelast=false"))
@@ -137,14 +145,18 @@ function floquet(L,
     span = timespan(store)
     T    = span[2] - span[1]
 
-    # ---- initial tangent vectors: the first N canonical directions ----
+    # ---- initial tangent vectors: `init`, or the first N canonical directions ----
     x       = similar(samples(store)[1])
     qs_init = couplecopy(N, x)
     for i = 1:N
-        qs_init[i] .= 0
-        qs_init[i][i] = 1
-        qs_init[i] ./= norm(qs_init[i])
+        if init === nothing
+            qs_init[i] .= 0
+            qs_init[i][i] = 1
+        else
+            qs_init[i] .= init[i]
+        end
     end
+    gs!(qs_init, false)
     qs_next = copy(qs_init)
 
     # ---- tangent flow ----

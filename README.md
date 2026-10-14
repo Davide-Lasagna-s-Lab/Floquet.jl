@@ -78,7 +78,8 @@ orbits.
 
 The package never forms $M$. It marches $N$ tangent vectors with the
 linearised equations, along the base orbit interpolated from a storage. The
-vectors start as the first $N$ canonical directions. Left alone they would
+vectors start as the first $N$ canonical directions, or as vectors given by
+the user. Left alone they would
 all align with the leading direction. To keep them independent they are
 re-orthonormalised every few time steps by two-pass Gram–Schmidt. This is a
 QR decomposition of the matrix of tangent vectors. The orthonormal factor
@@ -156,6 +157,7 @@ The keyword arguments are listed below.
 | `method`   | `:RK4`     | Scheme for the linearised equations. `:RK4` is explicit. `:CNRK2`, `:CB3R2R2`, `:CB3R2R3c`, `:CB3R2R3e` and `:CB4R3R4` are IMEX schemes, used with `A`. |
 | `oneevery` | `1`        | Number of time steps between two re-orthonormalisations. |
 | `shift`    | `identity` | Function applied in place to each tangent vector at the end of every period. See the section on relative periodic orbits. |
+| `init`     | `nothing`  | Initial tangent vectors, `N` states orthonormalised before use. The default is the first `N` canonical directions. Pass `init` when these are not meaningful directions of the state, for instance Fourier fields with padding or symmetry constraints. |
 | `λtol`     | `1e-7`     | Tolerance on the change of the log-multipliers between two periods. |
 | `θtol`     | `1e-7`     | Tolerance to detect the $2\times 2$ rotation blocks of $\tilde Q$ that flag complex pairs. |
 | `maxiter`  | `50`       | Maximum number of periods. |

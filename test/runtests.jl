@@ -227,6 +227,15 @@ end
         @test out.converged
         @test distance(out.exponents, μs_sorted[1:N], T) < 1e-8
     end
+
+    # the same from random initial vectors, not orthonormal
+    for N in (1, 3)
+        init = [randn(n) for i = 1:N]
+        out  = floquet(L, N, 1e-3, zero_orbit(n, T); init=init, λtol=1e-11, maxiter=100)
+        @test out.converged
+        @test distance(out.exponents, μs_sorted[1:N], T) < 1e-8
+    end
+    @test_throws ArgumentError floquet(L, 3, 1e-3, zero_orbit(n, T); init=[randn(n)])
 end
 
 @testset "time-periodic coefficients             " begin
