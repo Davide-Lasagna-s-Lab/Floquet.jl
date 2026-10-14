@@ -311,6 +311,61 @@ end
 end
 
 
+@testset "Ritz values                            " begin
+    # the systems above, with the exponents from the Ritz values
+    n = 5
+    D = zeros(n, n)
+    D[1:2, 1:2] = [0.1 -2.0; 2.0 0.1]
+    D[3, 3] = 0.5
+    D[4, 4] = -0.2
+    D[5, 5] = -1.3
+    V = randn(n, n)
+    A = V*D/V
+    T = 3.7
+    L(t, u, y, dydt) = mul!(dydt, A, y)
+    out = floquet(L, n, 1e-3, zero_orbit(n, T); extract=:ritz, λtol=1e-11, maxiter=100)
+    @test out.converged
+    @test distance(out.exponents, eigvals(A), T) < 1e-8
+
+    # negative multipliers and complex pairs, with time-periodic coefficients
+    # as in (b) above
+    T = 2.0
+    ω = π/T
+    rotation(t) = [cos(ω*t) -sin(ω*t) 0 0; sin(ω*t) cos(ω*t) 0 0; 0 0 1 0; 0 0 0 1]
+    Ω = [0 -ω 0 0; ω 0 0 0; 0 0 0 0; 0 0 0 0]
+    W = randn(2, 2)
+    B = zeros(4, 4)
+    B[1:2, 1:2] = W*Diagonal([0.3, -0.5])/W + Ω[1:2, 1:2]
+    B[3:4, 3:4] = [-0.2 0.9; -0.4 -0.2]
+    L2(t, u, y, dydt) = mul!(dydt, rotation(t)*B*rotation(t)', y)
+    out = floquet(L2, 4, 1e-3, zero_orbit(4, T); extract=:ritz, λtol=1e-11, maxiter=100)
+    @test out.converged
+    @test distance(out.exponents, [0.3 + im*π/T, -0.5 + im*π/T, -0.2 + 0.6im, -0.2 - 0.6im], T) < 1e-8
+
+    # a cluster of nearly equal exponents, 0.30, 0.29 ± 0.4i and 0.28, above
+    # -1.0. The Ritz values of the first four converge at the rate
+    # exp(-1.28 T) per period, the diagonal at exp(-0.01 T) only
+    n = 5
+    D = zeros(n, n)
+    D[1, 1] = 0.30
+    D[2:3, 2:3] = [0.29 -0.4; 0.4 0.29]
+    D[4, 4] = 0.28
+    D[5, 5] = -1.0
+    V = randn(n, n)
+    A = V*D/V
+    T = 2.0
+    L3(t, u, y, dydt) = mul!(dydt, A, y)
+    ritz  = floquet(L3, 4, 1e-3, zero_orbit(n, T); extract=:ritz, λtol=1e-10, maxiter=200)
+    schur = floquet(L3, 4, 1e-3, zero_orbit(n, T); extract=:schur, λtol=1e-10, maxiter=200)
+    @test ritz.converged
+    @test ritz.periods < 20
+    @test schur.periods > 5*ritz.periods
+    @test distance(ritz.exponents, [0.30, 0.29 + 0.4im, 0.29 - 0.4im, 0.28], T) < 1e-8
+
+    @test_throws ArgumentError floquet(L3, 4, 1e-3, zero_orbit(n, T); extract=:arnoldi)
+end
+
+
 # ---------------------------------------------------------------------------- #
 # LORENZ PERIODIC ORBITS
 
@@ -332,6 +387,12 @@ end
         out   = floquet(lorenz_tan, 3, T/n, store; λtol=1e-10, maxiter=50)
         λs    = out.exponents
         @test out.converged
+
+        # the Ritz values give the same leading and zero exponents
+        ritz = floquet(lorenz_tan, 3, T/n, store; extract=:ritz, λtol=1e-10, maxiter=50)
+        @test ritz.converged
+        @test abs(ritz.exponents[1] - λs[1]) < 1e-8
+        @test abs(ritz.exponents[2]) < 1e-6
 
         # one exponent is zero, for time translation
         @test abs(λs[2]) < 1e-6

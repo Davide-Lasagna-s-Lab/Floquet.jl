@@ -95,6 +95,16 @@ relative periodic orbits. `dt` is the time step of the tangent integration.
     `N` canonical directions, `y[i] = 1`. Pass `init` when these are not
     meaningful directions of the state, for instance for Fourier fields with
     padding or symmetry constraints.
+  - `extract = :schur`: how the exponents follow from the factors of each
+    period. `:schur` takes the diagonal of the triangular factors, and the
+    2x2 blocks of complex pairs, as in the periodic Schur decomposition. It
+    is accurate for all exponents, however far apart, but each one converges
+    at the rate set by its gap to the next. `:ritz` takes the eigenvalues of
+    the monodromy restricted to the subspace of the vectors, the Ritz values.
+    They converge at the rate set by the first multiplier left out, also
+    within clusters of nearly equal multipliers, but the exponent `λk` is
+    computed with a relative error of about `1e-16 exp((λ1 - λk) T)` in its
+    multiplier. Use `:ritz` for short orbits with clustered exponents.
   - `λtol = 1e-7`: tolerance on the change of the log-multipliers between
     two consecutive periods.
   - `θtol = 1e-7`: tolerance used to detect the 2x2 rotation blocks of the
@@ -121,6 +131,7 @@ function floquet(L,
                  oneevery::Int=1,
                  shift=identity,
                  init=nothing,
+                 extract::Symbol=:schur,
                  λtol::Real=1e-7,
                  θtol::Real=1e-7,
                  maxiter::Int=50,
@@ -135,6 +146,8 @@ function floquet(L,
                             ":CB3R2R3c, :CB3R2R3e or :CB4R3R4"))
     (method !== :RK4 || A === nothing) ||
         throw(ArgumentError("method :RK4 is explicit, use an IMEX method with A"))
+    extract in (:schur, :ritz) ||
+        throw(ArgumentError("extract must be :schur or :ritz"))
     (init === nothing || length(init) == N) ||
         throw(ArgumentError("init must hold N = $N tangent vectors"))
     (!isperiodic(store) || period(store) - ts[end] > (ts[2] - ts[1])/2) ||
@@ -183,6 +196,8 @@ function floquet(L,
     logλs     = ComplexF64[]               # log-multipliers of this period
     logλs_old = fill(ComplexF64(NaN), N)   # those of the previous period
     block     = zeros(2, 2)                # normalised product of 2x2 blocks
+    P         = zeros(N, N)                # normalised product of the R factors
+    C         = zeros(N, N)                # inner products of the initial and final vectors
     tmp       = zeros(2, 2)                # work array for the products
     history   = Vector{ComplexF64}[]       # exponents after each period
 
@@ -198,12 +213,33 @@ function floquet(L,
             shift(qs_next[i])
         end
 
+        # ---- Ritz values: eigenvalues of the monodromy restricted to the subspace ----
+        # With F the monodromy, shift included, F Q₀ = Q₁ R, with R the product of
+        # the factors, so that Q₀ᵀ F Q₀ = C R with C = Q₀ᵀ Q₁. The product is
+        # normalised after each factor and its scale kept as a logarithm.
+        if extract === :ritz
+            P    .= Rs[1]
+            scale = 0.0
+            for p in 2:length(Rs)
+                P    .= Rs[p] * P
+                v     = maximum(abs, P)
+                P   ./= v
+                scale += log(v)
+            end
+            for i = 1:N, j = 1:N
+                C[i, j] = dot(qs_init[i], qs_next[j])
+            end
+            append!(logλs, log.(complex.(eigvals(C * P))) .+ scale)
+        end
+
         # ---- find best rotation matrix that takes qs_next to qs_init ----
         Q = procrustes(qs_init, qs_next, false)
 
-        # find pairs of cc eigenvalues, the others are 1x1
-        idxs_2x2 = pair_locations(Q, θtol)
-        idxs_1x1 = [i for i = 1:N if (i ∉ idxs_2x2) && (i-1 ∉ idxs_2x2)]
+        # find pairs of cc eigenvalues, the others are 1x1. With Ritz values
+        # there is nothing left to do
+        idxs_2x2 = extract === :ritz ? Int[] : pair_locations(Q, θtol)
+        idxs_1x1 = extract === :ritz ? Int[] :
+                   [i for i = 1:N if (i ∉ idxs_2x2) && (i-1 ∉ idxs_2x2)]
 
         # ---- eigenvalues of 2x2 blocks ----
         for i in idxs_2x2
@@ -248,8 +284,9 @@ function floquet(L,
             push!(logλs, logλ + im*_im)
         end
 
-        # order by real part with unstable Floquet exponents first
-        sort!(logλs; by=real, rev=true)
+        # order by real part with unstable Floquet exponents first, and the
+        # member of a pair with positive imaginary part before the other
+        sort!(logλs; by=z -> (real(z), imag(z)), rev=true)
 
         # ---- store and print the exponents ----
         push!(history, logλs ./ T)

@@ -159,6 +159,7 @@ The keyword arguments are listed below.
 | `oneevery` | `1`        | Number of time steps between two re-orthonormalisations. |
 | `shift`    | `identity` | Function applied in place to each tangent vector at the end of every period. See the section on relative periodic orbits. |
 | `init`     | `nothing`  | Initial tangent vectors, `N` states orthonormalised before use. The default is the first `N` canonical directions. Pass `init` when these are not meaningful directions of the state, for instance Fourier fields with padding or symmetry constraints. |
+| `extract`  | `:schur`   | How the exponents follow from each period. `:schur` takes the diagonal of the triangular factors, `:ritz` the eigenvalues of the monodromy restricted to the subspace. See the section on clustered exponents. |
 | `λtol`     | `1e-7`     | Tolerance on the change of the log-multipliers between two periods. |
 | `θtol`     | `1e-7`     | Tolerance to detect the $2\times 2$ rotation blocks of $\tilde Q$ that flag complex pairs. |
 | `maxiter`  | `50`       | Maximum number of periods. |
@@ -331,6 +332,33 @@ The first periods are transients. Before the vectors have converged, real
 multipliers may show an imaginary part of π/T, or the vectors of two real
 multipliers may rotate into each other. Such a rotation is not taken as a
 complex pair, because the eigenvalues of its $2\times 2$ block are real.
+
+## Clustered exponents
+
+With `extract = :schur`, the $k$-th exponent converges at the rate
+$|\Lambda_{k+1}/\Lambda_k| = e^{-(\lambda_k - \lambda_{k+1}) T}$ per period.
+On a short orbit whose exponents are nearly equal, this rate is close to one,
+and the iteration may need thousands of periods. Before the vectors of a
+complex pair have converged, the pair is not recognised, and the diagonal
+entries of its two vectors change from one period to the next.
+
+With `extract = :ritz`, the exponents are the logarithms of the Ritz values,
+the eigenvalues of the monodromy restricted to the subspace of the $N$
+vectors, divided by $T$. Over a period $F Q_0 = Q_1 R$, with $F$ the
+monodromy and $R$ the product of the triangular factors, so that the
+restricted monodromy is $Q_0^\top F Q_0 = (Q_0^\top Q_1) R$. The Ritz values
+of the leading $k$ exponents converge at the rate
+$|\Lambda_{N+1}/\Lambda_k|$, set by the first multiplier left out, whatever
+the gaps between them. A linear system with exponents 0.30,
+$0.29 \pm 0.4i$, 0.28 and $-1.0$, with $N = 4$ and $T = 2$, converges to
+`λtol = 1e-10` in 11 periods with `:ritz` and in 1088 periods with `:schur`.
+
+The price is the accuracy of the exponents far below the leading one. The
+eigenvalues of the restricted monodromy carry a relative error of about
+$10^{-16}\,|\Lambda_1/\Lambda_k|$, as those of $M$ in the table above. Use
+`:ritz` for short orbits, and for the unstable and marginal exponents of long
+orbits as long as $e^{\lambda_1 T}$ stays well below $10^{16}$. Use `:schur`
+for the contracting exponents of long orbits.
 
 ## Limitations
 
