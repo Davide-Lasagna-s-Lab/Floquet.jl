@@ -2,13 +2,15 @@ module Lyapunov
 
 import LinearAlgebra: dot,
                       norm,
-                      Tridiagonal,
                       mul!,
                       eigvals,
-                      svd
-                      
+                      svd,
+                      UpperTriangular
+
 using Flows
 using Printf
+
+export floquet
 
 include("utils.jl")
 include("floquet.jl")
