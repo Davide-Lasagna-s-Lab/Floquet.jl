@@ -5,12 +5,17 @@
 # Lyapunov.jl
 
 Lyapunov.jl computes the Floquet exponents of periodic orbits of dynamical
-systems. It is designed for long periodic orbits of chaotic systems, possibly
-of large dimension, where the monodromy matrix cannot be formed or
-eigendecomposed directly. The package implements the matrix-free algorithm of
-appendix A of Lasagna (2020), which follows the periodic eigendecomposition of
-Ding and Cvitanović (2016). The orbit and the linearised equations are
-integrated with [Flows.jl](https://github.com/Davide-Lasagna-s-Lab/Flows.jl).
+systems. It implements a matrix-free version of the periodic
+eigendecomposition of Ding and Cvitanović (2016), fully discussed in
+appendix A of Lasagna (2020). The periodic eigendecomposition of Ding and
+Cvitanović is not matrix-free. It works on the Jacobian matrices of the
+segments of the orbit, which must be formed. Lyapunov.jl only needs the action
+of the linearised equations on tangent vectors. It is therefore suitable for
+large-scale systems from partial differential equations, where forming the
+monodromy matrix is not possible. **It is designed for long periodic orbits,
+where the monodromy matrix is ill-conditioned.** The orbit and the linearised
+equations are integrated with
+[Flows.jl](https://github.com/Davide-Lasagna-s-Lab/Flows.jl).
 
 ## Floquet exponents
 
