@@ -151,7 +151,9 @@ pair. The matrix of inner products `G[i, j] = dot(V[i], U[j])` is factored as
 a pair. Then `Φ = U R⁻¹` and `Ψ = V L⁻ᵀ`, so that `dot(Ψ[i], Φ[j]) = δᵢⱼ`.
 Each block of `Φ` is made orthonormal, and `Ψ` is changed to keep the
 biorthogonality. A real Floquet vector has unit norm, and the two vectors of
-a pair are an orthonormal basis of its plane. Return `Φ` and `Ψ`.
+a pair are the orthonormal basis of its plane closest to the two vectors of
+`U` of the pair, so that the basis varies continuously along the orbit, like
+`U`. Return `Φ` and `Ψ`.
 """
 function covariant(U, V, pairs)
     N = length(U)
@@ -198,6 +200,25 @@ function covariant(U, V, pairs)
             for m in k+1:length(b)
                 Ψ[b[k]] .+= S[k, m] .* Ψ[b[m]]
             end
+        end
+    end
+
+    # ---- the basis of the plane of each pair closest to its Schur vectors ----
+    # Only the plane of a pair is defined. The basis left by the factorisation
+    # turns with the adjoint basis, and it can turn quickly along the orbit.
+    # The orthonormal basis Q W of the plane closest to the Schur vectors U_b
+    # of the pair, with W the orthogonal factor of the polar decomposition of
+    # Qᵀ U_b, varies continuously, like U_b. For the leading pair it is U_b.
+    # Ψ_b ← Ψ_b W keeps ⟨Ψ, Φ⟩ = I, since W is orthogonal.
+    for b in blocks
+        length(b) == 2 || continue
+        F = svd([dot(Φ[i], U[j]) for i in b, j in b])
+        W = F.U * F.Vt
+        φ = copy.(Φ[b])
+        ψ = copy.(Ψ[b])
+        for k = 1:2
+            Φ[b[k]] .= W[1, k] .* φ[1] .+ W[2, k] .* φ[2]
+            Ψ[b[k]] .= W[1, k] .* ψ[1] .+ W[2, k] .* ψ[2]
         end
     end
 
@@ -313,8 +334,9 @@ with `vectors` are `nothing`.
     of the adjoint sweep at `times[k]`. The first `j` vectors span the
     invariant subspace of the `j` leading multipliers of the adjoint.
   - `floquetvectors`: `floquetvectors[k][j]` is the `j`-th Floquet vector
-    at `times[k]`, of unit norm. For a pair, the two vectors are an
-    orthonormal basis of its plane.
+    at `times[k]`, of unit norm. For a pair, the two vectors are the
+    orthonormal basis of its plane closest to the two vectors of `bases[k]`
+    of the pair, which varies continuously along the orbit.
   - `adjointvectors`: `adjointvectors[k][j]` is the `j`-th adjoint Floquet
     vector at `times[k]`, with `dot(adjointvectors[k][i],
     floquetvectors[k][j]) = δᵢⱼ`.

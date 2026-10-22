@@ -20,6 +20,18 @@ multipliers with large errors. Floquet.jl never forms the product of the propaga
 of the orbit, and computes every exponent with the accuracy of the time integration, however far it
 lies from the leading one.
 
+Long orbits also suit the iteration by which the package computes the exponents. Each period of the
+iteration reduces the error of the $j$-th exponent by the ratio of the moduli of consecutive
+multipliers,
+
+```math
+\left| \frac{\Lambda_{j+1}}{\Lambda_j} \right| = e^{(\mathrm{Re}\,\lambda_{j+1} - \mathrm{Re}\,\lambda_j)\, T} ,
+```
+
+so that two exponents a given distance apart separate in fewer periods on a longer orbit, while the
+multipliers may spread over any number of orders of magnitude. Short orbits with close exponents
+need many periods, as the examples show.
+
 
 ## Floquet theory
 
@@ -101,7 +113,7 @@ and its adjoint vectors are the eigenvectors of the adjoint of this matrix,
 
 where we used $\sigma_{-\ell}^{\top} = \sigma_{\ell}$, which holds for orthogonal operators. A relative
 periodic orbit has two unit multipliers, along the direction of the flow and along the group tangent
-$g(u) = \partial_\ell\, \sigma_\ell u \,|_{\ell = 0}$, which span a neutral plane. In Floquet.jl the
+$`g(u) = \partial_\ell\, \sigma_\ell u \,|_{\ell = 0}`$, which span a neutral plane. In Floquet.jl the
 keyword `shift` applies $\sigma_{-\ell}$ to the tangent vectors at the end of each period, and the
 keyword `shiftadj` applies $\sigma_\ell$ to the adjoint vectors. An orbit that closes up to a
 discrete symmetry, such as a reflection, is treated in the same way, with `shiftadj = shift`.
@@ -217,7 +229,7 @@ $2 \times 2$ rotation, because its two vectors keep rotating in their plane. The
 the basis $Q_0$ is then $D^{\top} R_K \cdots R_1$, which is block upper triangular.
 
 6. Compute the log-multipliers. For a real multiplier, $\log \Lambda_j$ is the sum of
-   $\log (R_k)_{jj}$ over the factors, plus $i\pi$ when $D_{jj} < 0$. For a complex pair, the two
+   $`\log (R_k)_{jj}`$ over the factors, plus $`i\pi`$ when $`D_{jj} < 0`$. For a complex pair, the two
    multipliers are the eigenvalues of the $2 \times 2$ matrix $D_b^{\top} R_K^{(b)} \cdots R_1^{(b)}$,
    where $b$ denotes the diagonal block of the pair. This product is renormalised after each factor,
    with its scale kept as a logarithm, so that large and small factors are never multiplied
@@ -280,7 +292,13 @@ forward and adjoint planes happen to be orthogonal, while the $2 \times 2$ pivot
 4. Each real Floquet vector is normalised to unit norm, and its adjoint is scaled to keep
    $\langle \psi_j, \varphi_j \rangle = 1$. For a pair, the QR factorisation $\Phi_b = Q S$ of its
    two vectors gives an orthonormal basis of its plane, $\Phi_b \leftarrow \Phi_b S^{-1}$, and the
-   adjoints become $\Psi_b \leftarrow \Psi_b S^{\top}$, which keeps the biorthogonality.
+   adjoints become $\Psi_b \leftarrow \Psi_b S^{\top}$, which keeps the biorthogonality. Only the
+   plane of a pair is defined, and this basis turns with the adjoint basis, which may turn quickly
+   along the orbit. The basis is therefore rotated in its plane to the one closest to the Schur
+   vectors $U_b$ of the pair, $\Phi_b \leftarrow \Phi_b W$ and $\Psi_b \leftarrow \Psi_b W$, with
+   $W$ the orthogonal factor of the polar decomposition of $\Phi_b^{\top} U_b$. This basis varies
+   continuously along the orbit, like the Schur vectors, and for the leading pair it is made of the
+   Schur vectors themselves.
 
 The vectors obtained in this way are covariant, biorthogonal at every time, and continuous along the
 orbit, because the pivots of the factorisation do not vanish. With $N$ smaller than the dimension of
@@ -376,9 +394,10 @@ the package.
 All the vector outputs and the rows of `stretching` are in basis order, which is the order in which
 the subspace iteration finds the multipliers, by decreasing modulus in generic cases. The Floquet
 vector of `exponents[i]` at `times[k]` is therefore `out.floquetvectors[k][out.order[i]]`. A complex
-pair is returned as an orthonormal basis of its plane, since only the plane is defined. The vectors
-at $T$ are those at $t_0$ moved by $\sigma_\ell$ and multiplied by the sign of their multiplier, and
-the basis of the plane of a pair at $T$ is a rotation of the one at $t_0$. The sum of the row
+pair is returned as the orthonormal basis of its plane closest to its Schur vectors, since only the
+plane is defined, and this basis varies continuously along the orbit. The vectors at $T$ are those
+at $t_0$ moved by $\sigma_\ell$ and multiplied by the sign of their multiplier, and the basis of the
+plane of a pair at $T$ is a rotation of the one at $t_0$. The sum of the row
 `order[i]` of `stretching` is $T\, \mathrm{Re}\, \lambda_i$ for a real multiplier, while for a pair
 only the sum of its two rows has a meaning.
 
@@ -444,8 +463,10 @@ $2 \times 10^{-11}$.
 
 ## Examples
 
-The script [examples/make_figures.jl](examples/make_figures.jl) runs the examples of this section,
-makes the figures and prints every number quoted in this README.
+The scripts in [examples](examples) run the examples of this section, make the figures and print
+every number quoted in this README. The script [make_figures.jl](examples/make_figures.jl) runs
+those on the Lorenz equations, and [kuramoto_sivashinsky.jl](examples/kuramoto_sivashinsky.jl) and
+[kolmogorov.jl](examples/kolmogorov.jl) those on the two partial differential equations.
 
 ### The Lorenz orbit AB
 
@@ -518,7 +539,7 @@ We report in Figure 1 how the exponents converge over the periods on the three o
 </p>
 
 *Figure 1. Convergence over the periods on the three orbits of Table 1, with RK8 and
-`λtol = 1e-12`. (a) Zero exponent $\lambda_2$, with dashed lines at the rate $e^{-\lambda_1 T}$ per
+`λtol = 1e-12`. (a) Zero exponent $`\lambda_2`$, with dashed lines at the rate $`e^{-\lambda_1 T}`$ per
 period. (b) Error of the sum rule.*
 
 The zero exponent converges at the rate $|\Lambda_2/\Lambda_1| = e^{-\lambda_1 T}$ per period, which
@@ -544,7 +565,7 @@ cumulative = cumsum(out.stretching; dims=2)
 </p>
 
 *Figure 2. Cumulative stretching of the three orthonormal vectors along the orbit AB. The sums end at
-$\lambda_j T$.*
+$`\lambda_j T`$.*
 
 The vectors stretch and contract at rates that change along the orbit. The cumulative stretching of
 the first vector is negative over part of the period, so that only its value over the whole period
@@ -568,9 +589,9 @@ out = floquet(lorenz_tan, 3, T/n, store; method=:RK8, λtol=1e-12, oneevery=10,
   <img src="assets/vectors.png" alt="Floquet vectors along the orbit AB" width="820">
 </p>
 
-*Figure 3. Floquet vectors along the orbit AB. (a) Unstable vector $\varphi_1$ and stable vector
-$\varphi_3$, projected on the $(x, z)$ plane, at 24 points of the orbit. (b) Angles between the
-vectors along the orbit, where $\varphi_2$ is the direction of the flow.*
+*Figure 3. Floquet vectors along the orbit AB. (a) Unstable vector $`\varphi_1`$ and stable vector
+$`\varphi_3`$, projected on the $`(x, z)`$ plane, at 24 points of the orbit. (b) Angles between the
+vectors along the orbit, where $`\varphi_2`$ is the direction of the flow.*
 
 The Floquet vectors change direction substantially along the orbit. The unstable vector swings from
 nearly parallel to nearly antiparallel to the direction of the flow, and back, during one period,
@@ -671,8 +692,291 @@ meaning. Figure 4 shows three periods of the orbit, each a rotated copy of the p
   <img src="assets/rpo.png" alt="Three periods of the relative periodic orbit" width="560">
 </p>
 
-*Figure 4. Three periods of the relative periodic orbit in the plane of the observable $z\, a$, which
-turns by $\ell$ over each period. The dots mark the start of each period.*
+*Figure 4. Three periods of the relative periodic orbit in the plane of the observable $`z\, a`$, which
+turns by $`\ell`$ over each period. The dots mark the start of each period.*
+
+### The Kuramoto–Sivashinsky equation
+
+The last two examples concern partial differential equations, the systems for which the package is
+designed. The first is the Kuramoto–Sivashinsky equation
+
+```math
+u_t = -u u_x - u_{xx} - u_{xxxx}, \qquad x \in [0, L),
+```
+
+with periodic boundary conditions. On a domain of length $L = 22$ its solutions are chaotic, and it
+has a large number of relative periodic orbits (Cvitanović et al. 2010). The equation is equivariant
+under the translations $\sigma_\ell u(x) = u(x - \ell)$. We consider the relative periodic orbit of
+period $T = 32.80$ for which $u(x, T) = u(x - \ell, 0)$ with $\ell = 10.96$, so that the solution
+drifts by nearly half the domain over each period. The orbit was converged by multiple shooting with
+[NKSearch.jl](https://github.com/Davide-Lasagna-s-Lab/NKSearch.jl), and the file
+[examples/data/ks_rpo.txt](examples/data/ks_rpo.txt) holds its state at $t = 0$.
+
+We discretise the equation with [KS.jl](https://github.com/gasagna/KS.jl), which writes the solution
+as a Fourier series with $n = 16$ modes, a state of dimension 32. With `dealias = :pad` the products
+are evaluated on a padded grid, so that the model is the Galerkin truncation of the equation and is
+equivariant under all translations. KS.jl works on $[0, 2\pi)$, where the coefficient of $u_{xxxx}$
+becomes $\nu = (2\pi/L)^2$ and the time is scaled by $\nu$. We multiply its right-hand sides by
+$\nu$, so that times and exponents are those of the equation on $[0, L)$. The adjoint operator of
+KS.jl is the transpose of the linearised operator in `dot`, which is here the Euclidean product of
+the 32 degrees of freedom. The function `shift!(v, s)` maps $v(x)$ to $v(x + s)$ on $[0, 2\pi)$, so
+that `shift!(v, q*ℓ)`, with $q = 2\pi/L$, applies $\sigma_{-\ell}$. We compute twelve exponents
+with their Floquet vectors.
+
+```julia
+using DelimitedFiles
+using Flows
+using Floquet
+using KS
+
+# the domain [0, L), mapped on the [0, 2π) of KS.jl, with ν = (2π/L)² and n Fourier modes
+L = 22
+q = 2π/L
+ν = q^2
+n = 16
+
+# right-hand side, linearised and adjoint equations, with the products dealiased by padding
+f  = ForwardEquation(n, ν, false; dealias=:pad)
+J  = LinearisedEquation(n, ν, false, TangentMode(); dealias=:pad)
+Jᵀ = LinearisedEquation(n, ν, false, AdjointMode(); dealias=:pad)
+
+# the same, times ν, in the time of the equation on [0, L)
+ks(t, u, dudt)        = (f(t, u, dudt); dudt .*= ν)
+ks_tan(t, u, v, dvdt) = (J(t, u, v, dvdt); dvdt .*= ν)
+ks_adj(t, u, w, dwdt) = (Jᵀ(t, u, w, dwdt); dwdt .*= ν)
+
+# the orbit at t = 0, its period and its shift, u(x, T) = u(x - ℓ, 0)
+u0 = FTField(vec(readdlm(joinpath(@__DIR__, "data", "ks_rpo.txt"); comments=true)), false)
+T  = 32.79688563412746
+ℓ  = 10.958264212631029
+
+# one period of the orbit, in K steps of RK8, in a storage with both ends
+K     = 6560
+store = RAMStorage(u0; degree=5)
+F     = flow(ks, RK8(similar(u0)), TimeStepConstant(T/K))
+uT    = F(copy(u0), (0, T), store)
+
+# exponents and vectors, with the shift back by ℓ and its adjoint, on the [0, 2π) of KS.jl
+out = floquet(ks_tan, 12, T/K, store; method=:RK8, λtol=1e-10, oneevery=10, maxiter=100,
+              shift    = v -> shift!(v, q*ℓ),
+              shiftadj = v -> shift!(v, -q*ℓ),
+              vectors  = :floquet,
+              Ladj     = ks_adj)
+```
+
+The output is the following.
+
+```julia
+julia> round.(out.exponents; digits=6)
+12-element Vector{ComplexF64}:
+   0.01861 + 0.042625im
+   0.01861 - 0.042625im
+       0.0 + 0.0im
+      -0.0 + 0.0im
+ -0.196877 + 0.095789im
+ -0.247255 + 0.095789im
+ -0.308693 + 0.067271im
+ -0.308693 - 0.067271im
+ -1.957542 + 0.095789im
+ -1.965947 + 0.095789im
+ -5.603255 + 0.001114im
+ -5.603255 - 0.001114im
+
+julia> out.converged, out.periods
+(true, 73)
+```
+
+The orbit has one unstable pair of complex exponents. Over each period, perturbations in the plane of
+the pair grow by a factor of 1.8 and turn by about 80 degrees, and this rotation appears as a
+$2 \times 2$ block of the Procrustes matrix $D$. The two exponents follow from the eigenvalues of
+the product of the $2 \times 2$ blocks of the factors, and the two Floquet vectors are returned as an
+orthonormal basis of the plane. The two zero exponents, below $10^{-14}$, are those of the neutral
+plane, which contains the direction of the flow and the group tangent $g = -u_x$. At every time both
+lie in the plane of the Floquet vectors of the zero exponents to within $10^{-9}$. Four exponents
+have the imaginary part $\pi/T$, because their multipliers are real and negative. The adjoint
+exponents agree with the forward ones to $4 \times 10^{-13}$, and the vectors are biorthogonal to
+$10^{-14}$ at every time.
+
+Figure 5 shows the exponents and their convergence. This orbit also shows the limit of the
+eigenvalues of the monodromy matrix. Those of the comoving matrix $\tilde M$, formed from 32
+integrations of the linearised equations, give the first eight exponents to $2 \times 10^{-12}$. The
+multipliers of the next four are smaller than $10^{-28}$ times the leading one. The eigenvalues of
+$\tilde M$ put these four exponents near $-1.1$, where the ratio $|\Lambda_j/\Lambda_1|$ reaches the
+machine precision, while `floquet` finds them near $-1.96$ and $-5.60$. The iteration needs 73
+periods. Most exponents converge within fifty, and $\lambda_9$ and $\lambda_{10}$, only 0.008 apart,
+converge last, at the rate $|\Lambda_{10}/\Lambda_9| = 0.76$ per period.
+
+<p align="center">
+  <img src="assets/ks_exponents.png" alt="The exponents of the relative periodic orbit of the Kuramoto–Sivashinsky equation and their convergence" width="820">
+</p>
+
+*Figure 5. The exponents of the relative periodic orbit of the Kuramoto–Sivashinsky equation. (a)
+Real parts, with the eigenvalues of the comoving monodromy matrix $`\tilde M`$ (circles) and,
+dashed, the level at which $`|\Lambda_j/\Lambda_1|`$ reaches the machine precision. (b) Distance of
+each exponent from its final value over the periods of the iteration, one line for each pair.*
+
+Figure 6 shows the orbit and two of its Floquet vectors over one period.
+
+<p align="center">
+  <img src="assets/ks_vectors.png" alt="The relative periodic orbit of the Kuramoto–Sivashinsky equation and two of its Floquet vectors" width="820">
+</p>
+
+*Figure 6. The relative periodic orbit of the Kuramoto–Sivashinsky equation over one period. (a)
+Solution $`u`$. (b) Vector $`\varphi_1`$ of the plane of the unstable pair. (c) Floquet vector
+$`\varphi_5`$ of the least stable exponent. Each field is scaled by its largest absolute value.*
+
+The vectors at $t = T$ are those at $t = 0$ translated by $\ell$, like the solution. In addition,
+the basis of the plane of the pair has turned, and $\varphi_5$ has changed sign, because its
+multiplier is negative. The basis of the plane of the pair is that of the first two Schur vectors,
+and it varies continuously along the orbit.
+
+### Kolmogorov flow
+
+Kolmogorov flow is the flow of an incompressible fluid on the torus $[0, 2\pi)^2$, driven by the body
+force $\sin(k_f y)$ along $x$. Its vorticity $\omega$ obeys
+
+```math
+\omega_t + \boldsymbol{u} \cdot \nabla \omega = \frac{1}{Re} \nabla^2 \omega - k_f \cos(k_f y) .
+```
+
+At $Re = 40$ and $k_f = 4$ the flow is turbulent (Chandler and Kerswell 2013). It spends long times
+in quiet states, dominated by a pair of vortices, and bursts at irregular intervals, when the
+dissipation rises steeply. We consider a relative periodic orbit of period $T = 60.80$ that contains
+both phases. Its vortex pair wanders along $x$ for most of the period, and near $t = 52$ the
+dissipation nearly triples, to 0.27 of its laminar value, before the pair forms again. Over one
+period the orbit drifts by $\ell = -2.90$ along $x$, so that $\omega(x, y, T) = \omega(x - \ell, y, 0)$.
+
+[OpenKolmogorovFlow.jl](https://github.com/Davide-Lasagna-s-Lab/OpenKolmogorovFlow.jl) writes the
+vorticity as a Fourier series with the wavenumbers up to $n = 33$ along each direction, about 4500
+degrees of freedom, and dealiases the products by the 3/2 rule on the grid of $m = 49$. The orbit
+was converged by multiple shooting with NKSearch.jl over five segments, on the time stepper of
+OpenKolmogorovFlow.jl with the IMEX scheme CB3R2R3e and steps of 0.01. The file
+[examples/data/kolmogorov_rpo.txt](examples/data/kolmogorov_rpo.txt) holds the Fourier coefficients
+of its vorticity at $t = 0$. We store one period by integrating over the five segments in turn,
+which reproduces the map of the shooting and closes the orbit to $10^{-11}$. The storage does not
+repeat the ends of the segments, and it receives the state at $T$ last.
+
+The viscous term is diagonal in Fourier space, and it is the implicit part `A` of the IMEX schemes of
+the linearised and adjoint equations, while OpenKolmogorovFlow.jl provides the adjoint of the
+explicit part. The canonical directions of a field include the mean and the modes used for
+dealiasing, which the equations keep at zero, so that we start from random fields with `init`. We
+compute eight exponents with their Floquet vectors, with the scheme CB4R3R4 and steps of about 0.02,
+twice those of the orbit.
+
+```julia
+using DelimitedFiles
+using Random
+using FFTW
+using Flows
+using Floquet
+using OpenKolmogorovFlow
+
+# Re = 40 and forcing wavenumber 4, wavenumbers up to n = 33, dealiased on the grid of m = 49
+n  = 33
+m  = 49
+Re = 40
+kf = 4
+
+# the vorticity of the orbit at t = 0, its period and its shift, ω(x, y, T) = ω(x - ℓ, y, 0)
+c  = readdlm(joinpath(@__DIR__, "data", "kolmogorov_rpo.txt"); comments=true)
+Ω0 = FTField(n, m)
+for (kx, ky, a, b) in eachrow(c)
+    Ω0[WaveNumber(Int(ky), Int(kx))] = complex(a, b)
+end
+T = 60.80397639342852
+ℓ = -2.9035006731854844
+
+# one period of the orbit, over the five segments of the shooting, with its scheme and its step,
+# in a storage with both ends
+fex, fim = splitexim(ForwardEquation(n, m, Re, kf, FFTW.MEASURE))
+F        = flow(fex, fim, CB3R2R3e(FTField(n, m)), TimeStepConstant(0.01))
+store    = RAMStorage(FTField(n, m); storelast=false, degree=5)
+Ω        = copy(Ω0)
+for k = 1:5
+    F(Ω, ((k - 1)*T/5, k*T/5), store)
+end
+push!(store, T, copy(Ω))
+
+# explicit and implicit parts of the linearised equations, and explicit part of the adjoint ones
+lex, lim = splitexim(LinearisedEquation(n, m, Re, TangentMode(), FFTW.MEASURE))
+aex, _   = splitexim(LinearisedEquation(n, m, Re, AdjointMode(), FFTW.MEASURE))
+
+# eight random initial vectors, real fields of zero mean on the active modes
+rng  = MersenneTwister(1)
+init = [FFT(Field(randn(rng, 2m + 2, 2m + 2)), n) for j = 1:8]
+
+# eight exponents and their vectors, in steps of about 0.02, with the shift back by ℓ along x
+out = floquet(lex, 8, T/3040, store; A=lim, method=:CB4R3R4, init=init, oneevery=30,
+              shift    = v -> xshift!(v, ℓ),
+              shiftadj = v -> xshift!(v, -ℓ),
+              vectors  = :floquet,
+              Ladj     = aex)
+```
+
+The output is the following.
+
+```julia
+julia> round.(out.exponents; digits=6)
+8-element Vector{ComplexF64}:
+  0.123719 + 0.0im
+  0.090911 + 0.051668im
+  0.072826 + 0.051668im
+  0.024064 + 0.0im
+       0.0 + 0.0im
+       0.0 - 0.0im
+ -0.051217 + 0.036419im
+ -0.051217 - 0.036419im
+
+julia> out.converged, out.periods
+(true, 18)
+```
+
+The orbit has four unstable exponents. Two of them have the imaginary part $\pi/T$, because their
+multipliers are negative. The next two exponents are zero, for the direction of the flow and for the
+translations along $x$, and the leading stable exponents form a complex pair. The exponents agree to
+$2 \times 10^{-7}$ with those of the Arnoldi iteration on the monodromy matrix of the shooting map,
+and the adjoint exponents agree with the forward ones to $10^{-9}$. The two zero exponents come out
+at $3 \times 10^{-8}$, the error of the integration, and as a pair, because their multipliers are
+equal and the iteration turns the basis of their plane slightly at each period. At every time the
+direction of the flow and the derivative $\partial_x \omega$ lie in the plane of their Floquet
+vectors to $10^{-5}$, and the Floquet vectors and their adjoints are biorthogonal to $10^{-13}$.
+
+On this long orbit the iteration converges in 18 periods (Figure 7). The largest ratio of the moduli
+of consecutive multipliers is 0.33, so that each period gains at least a factor of three on every
+exponent. The forward and the adjoint sweeps take about fifteen minutes on a laptop, with four
+threads for the Fourier transforms.
+
+<p align="center">
+  <img src="assets/kolmogorov_exponents.png" alt="The exponents of the relative periodic orbit of Kolmogorov flow and their convergence" width="820">
+</p>
+
+*Figure 7. The exponents of the relative periodic orbit of Kolmogorov flow. (a) Real parts, with
+those of the Arnoldi iteration (circles). (b) Distance of each exponent from its final value over
+the periods of the iteration, one line for each pair.*
+
+Figure 8 animates the orbit and its three leading Floquet vectors over one period. The vectors are
+those at $t = 0$, carried along the orbit by the linearised equations and multiplied by
+$e^{-\mathrm{Re}\,\lambda_j t}$, which leaves the periodic factor of Floquet's theorem, up to the
+shift by $\ell$. The size of each field then shows where the perturbations grow faster or slower than
+on average. At every time these fields are parallel to the Floquet vectors returned by `floquet` to
+$10^{-5}$ degrees, which checks that the vectors are covariant.
+
+<p align="center">
+  <img src="assets/kolmogorov_vectors.gif" alt="Animation of the relative periodic orbit of Kolmogorov flow and of its three leading Floquet vectors over one period" width="820">
+</p>
+
+*Figure 8. Animation over one period of the relative periodic orbit of Kolmogorov flow, in the frame
+that drifts with it. (a) Vorticity $`\omega`$. (b, c, d) Floquet vectors $`\varphi_1`$,
+$`\varphi_2`$ and $`\varphi_3`$ at $`t = 0`$, carried along the orbit by the linearised equations
+and multiplied by $`e^{-\mathrm{Re}\,\lambda_j t}`$. Each field is scaled by its largest absolute
+value over the period. The [still figure](assets/kolmogorov_vectors.png) shows the fields at the
+peak of the burst, $`t = 52.2`$, each scaled by its largest absolute value at that time.*
+
+The vector $\varphi_1$ shrinks against the mean growth through the quiet phase, to 0.15 of its
+initial size by $t = 37$, and grows by a factor of 14 from there to $t = 53$, mostly during the
+burst, where it concentrates on the sheets of vorticity that replace the vortex pair. The vectors
+$\varphi_2$ and $\varphi_3$ grow later, after the burst, and they end the period with the opposite
+sign, because their multipliers are negative.
 
 
 ## Choosing the parameters
@@ -725,7 +1029,10 @@ The tolerance `λtol` applies to the logarithms of the multipliers, so that the 
 period, $e^{(\lambda_{j+1} - \lambda_j) T}$. Long orbits need few periods, and short orbits may need
 many. The orbit AB needs 17 periods to reach `λtol = 1e-10`, because the zero exponent converges at
 the rate $e^{-\lambda_1 T} \approx 0.21$ per period. With the default `λtol = 1e-7` it needs 13
-periods, and the second exponent is then $-6 \times 10^{-9}$. Check `converged`, and inspect
+periods, and the second exponent is then $-6 \times 10^{-9}$. Among the examples, the relative
+periodic orbit of Kolmogorov flow, of period 60.80, gives eight exponents in 18 periods, while the
+orbit of the Kuramoto–Sivashinsky equation, of period 32.80, needs 73, because two of its twelve
+exponents are only 0.008 apart. Check `converged`, and inspect
 `history` or set `verbose = true` to follow the iteration. The first lines printed for the example
 of the orbit AB are the following.
 
@@ -786,7 +1093,9 @@ mapped onto itself, times its multiplier, over the period. The vectors are also 
 eigenvectors of linear systems with a complex pair, with negative multipliers whose basis order
 differs from the order of the exponents, and with shifts that commute and that do not commute with
 the system, and on the relative periodic orbit of the previous section, where the flow and the group
-tangent must lie in the neutral plane. The tests of RK8 check the sum rule to $10^{-12}$, and run
+tangent must lie in the neutral plane. The basis of the plane of a pair must be the one closest to
+the Schur vectors of the pair at every time, and vary continuously along the orbit. The tests of RK8
+check the sum rule to $10^{-12}$, and run
 only with a Flows.jl that has RK8. Otherwise they check that `method = :RK8` gives an informative
 error. Run the tests with
 
@@ -808,26 +1117,35 @@ include("test/runtests.jl")
 
 ## Reproducing the figures
 
-The figures in `assets/` and every number of this README come from the script
-`examples/make_figures.jl`, which has its own environment, with CairoMakie and with Flows.jl from
-the branch rk8. From the root of the repository, run
+The figures in `assets/` and every number of this README come from the scripts
+`examples/make_figures.jl`, `examples/kuramoto_sivashinsky.jl` and `examples/kolmogorov.jl`. They
+share an environment, with CairoMakie, Flows.jl from the branch rk8, KS.jl and OpenKolmogorovFlow.jl,
+and the colours and theme of the figures in `examples/style.jl`. The two orbits of the partial
+differential equations are read from `examples/data`. From the root of the repository, run
 
 ```
 julia --project=examples -e 'using Pkg; Pkg.instantiate()'
 julia --project=examples examples/make_figures.jl
+julia --project=examples examples/kuramoto_sivashinsky.jl
+julia -t 4 --project=examples examples/kolmogorov.jl
 ```
 
-The logo is drawn by `assets/make_logo.jl`.
+The first two scripts take a few minutes each, and the third about fifteen, most of them for the
+two sweeps of `floquet` on the orbit of Kolmogorov flow. The logo is drawn by `assets/make_logo.jl`.
 
 
 ## References
 
 - A. Bojanczyk, G. H. Golub and P. Van Dooren, The periodic Schur decomposition. Algorithms and
   applications, Proc. SPIE 1770, 31 (1992).
+- G. J. Chandler and R. R. Kerswell, Invariant recurrent solutions embedded in a turbulent
+  two-dimensional Kolmogorov flow, J. Fluid Mech. 722, 554 (2013).
 - G. J. Cooper and J. H. Verner, Some explicit Runge–Kutta methods of high order, SIAM J. Numer.
   Anal. 9, 389 (1972).
 - P. Cvitanović, R. Artuso, R. Mainieri, G. Tanner and G. Vattay, Chaos: Classical and Quantum,
   [ChaosBook.org](https://chaosbook.org), Niels Bohr Institute, Copenhagen.
+- P. Cvitanović, R. L. Davidchack and E. Siminos, On the state space geometry of the
+  Kuramoto–Sivashinsky flow in a periodic domain, SIAM J. Appl. Dyn. Syst. 9, 1 (2010).
 - X. Ding and P. Cvitanović, Periodic eigendecomposition and its application to
   Kuramoto–Sivashinsky system, SIAM J. Appl. Dyn. Syst. 15, 1434 (2016).
 - F. Ginelli, P. Poggi, A. Turchi, H. Chaté, R. Livi and A. Politi, Characterizing dynamics with
