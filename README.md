@@ -204,17 +204,18 @@ of the iteration proceeds in the following steps.
 4. At $T$, apply `shift` to the vectors. This gives $\hat Q_0 = \sigma_{-\ell} Q_K$, so that
    $\tilde M Q_0 = \hat Q_0 R_K \cdots R_1$.
 5. Find the orthogonal matrix $D$ that best maps the final basis onto the initial one, by solving
-   the orthogonal Procrustes problem (Golub and Van Loan 2013)
+   the orthogonal Procrustes problem (Golub and Van Loan 2013),
 
-   ```math
-   D = \arg\min_{D^{\top} D = I} \Vert Q_0 - \hat Q_0 D \Vert_F = U V^{\top}, \qquad \hat Q_0^{\top} Q_0 = U \Sigma V^{\top} .
-   ```
+```math
+D = \underset{D^{\top} D = I}{\arg\min} \, \lVert Q_0 - \hat Q_0 D \rVert_F = U V^{\top} ,
+```
 
-   Once the subspaces have converged, $D$ is block diagonal. A positive real multiplier gives a
-   diagonal entry $+1$, and a negative one gives $-1$, because its vector flips at each period. A
-   complex pair gives a $2 \times 2$ rotation, because its two vectors keep rotating in their plane.
-   The monodromy matrix in the basis $Q_0$ is then $D^{\top} R_K \cdots R_1$, which is block upper
-   triangular.
+with $U \Sigma V^{\top}$ the singular value decomposition of $\hat Q_0^{\top} Q_0$. Once the
+subspaces have converged, $D$ is block diagonal. A positive real multiplier gives a diagonal entry
+$+1$, and a negative one gives $-1$, because its vector flips at each period. A complex pair gives a
+$2 \times 2$ rotation, because its two vectors keep rotating in their plane. The monodromy matrix in
+the basis $Q_0$ is then $D^{\top} R_K \cdots R_1$, which is block upper triangular.
+
 6. Compute the log-multipliers. For a real multiplier, $\log \Lambda_j$ is the sum of
    $\log (R_k)_{jj}$ over the factors, plus $i\pi$ when $D_{jj} < 0$. For a complex pair, the two
    multipliers are the eigenvalues of the $2 \times 2$ matrix $D_b^{\top} R_K^{(b)} \cdots R_1^{(b)}$,
@@ -258,17 +259,24 @@ steps.
 3. Biorthogonality implies that $F_{j-1}^{\perp} = \mathrm{span}(\varphi_j, \dots, \varphi_n)$, so
    that $\varphi_j$ spans the intersection $E_j \cap F_{j-1}^{\perp}$. These intersections follow
    from an LU factorisation without pivoting of the matrix of inner products $G = V_k^{\top} U_k$, of
-   entries $G_{ij} = \langle v_i, u_j \rangle$,
+   entries $G_{ij} = \langle v_i, u_j \rangle$. With $L$ lower and $R$ upper triangular,
 
-   ```math
-   G = L R, \qquad \Phi_k = U_k R^{-1}, \qquad \Psi_k = V_k L^{-\top}, \qquad \Psi_k^{\top} \Phi_k = L^{-1} G R^{-1} = I .
-   ```
+```math
+G = L R , \qquad \Phi_k = U_k R^{-1} , \qquad \Psi_k = V_k L^{-\top} ,
+```
 
-   Since $R^{-1}$ and $L^{-\top}$ are upper triangular, the $j$-th column of $\Phi_k$ lies in $E_j$
-   and that of $\Psi_k$ in $F_j$, and the last relation is the biorthogonality. The factorisation
-   does not pivot, because the order of the nested subspaces carries the information. A complex pair
-   takes a $2 \times 2$ pivot, because the scalar pivot of its first vector vanishes where the bases
-   of the forward and adjoint planes happen to be orthogonal, while the $2 \times 2$ pivot does not.
+so that
+
+```math
+\Psi_k^{\top} \Phi_k = L^{-1} V_k^{\top} U_k R^{-1} = L^{-1} G R^{-1} = I .
+```
+
+Since $R^{-1}$ and $L^{-\top}$ are upper triangular, the $j$-th column of $\Phi_k$ lies in $E_j$ and
+that of $\Psi_k$ in $F_j$, and the last relation is the biorthogonality. The factorisation does not
+pivot, because the order of the nested subspaces carries the information. A complex pair takes a
+$2 \times 2$ pivot, because the scalar pivot of its first vector vanishes where the bases of the
+forward and adjoint planes happen to be orthogonal, while the $2 \times 2$ pivot does not.
+
 4. Each real Floquet vector is normalised to unit norm, and its adjoint is scaled to keep
    $\langle \psi_j, \varphi_j \rangle = 1$. For a pair, the QR factorisation $\Phi_b = Q S$ of its
    two vectors gives an orthonormal basis of its plane, $\Phi_b \leftarrow \Phi_b S^{-1}$, and the
