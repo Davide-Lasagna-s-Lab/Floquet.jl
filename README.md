@@ -322,12 +322,7 @@ pkg> add https://github.com/Davide-Lasagna-s-Lab/Floquet.jl
 
 The package was called Lyapunov.jl until October 2026, and GitHub redirects the old address of its
 repository to the new one. The scheme `:RK8`, the eleven-stage eighth-order Runge–Kutta scheme of Cooper and Verner
-(1972), needs Flows.jl with RK8, which is on the branch rk8 until it is merged into master. To use
-it, add Flows.jl from that branch instead.
-
-```julia
-pkg> add https://github.com/Davide-Lasagna-s-Lab/Flows.jl#rk8
-```
+(1972), needs a version of Flows.jl from October 2026 or later.
 
 Julia 1.11 or later is required.
 
@@ -1103,24 +1098,15 @@ error. Run the tests with
 julia --project -e 'using Pkg; Pkg.test()'
 ```
 
-To include the tests of RK8, run the test file from the root of the repository, in an environment
-with Flows.jl from the branch rk8.
-
-```julia
-using Pkg
-Pkg.activate(temp=true)
-Pkg.add(url="https://github.com/Davide-Lasagna-s-Lab/Flows.jl", rev="rk8")
-Pkg.develop(path=".")
-include("test/runtests.jl")
-```
+With a version of Flows.jl from before October 2026, which has no RK8, the tests of RK8 reduce to
+the check of the error.
 
 
 ## Reproducing the figures
 
 The figures in `assets/` and every number of this README come from the scripts
 `examples/make_figures.jl`, `examples/kuramoto_sivashinsky.jl` and `examples/kolmogorov.jl`. They
-share an environment, with CairoMakie, Flows.jl from the branch rk8, KS.jl from the branch dealias and
-OpenKolmogorovFlow.jl, all from GitHub,
+share an environment, with CairoMakie, Flows.jl, KS.jl and OpenKolmogorovFlow.jl, all from GitHub,
 and the colours and theme of the figures in `examples/style.jl`. The two orbits of the partial
 differential equations are read from `examples/data`. From the root of the repository, run
 

@@ -265,7 +265,7 @@ relative periodic orbits. `dt` is the time step of the tangent integration.
     explicit `:RK4` or `:RK8`, or one of the IMEX schemes `:CNRK2`,
     `:CB3R2R2`, `:CB3R2R3c`, `:CB3R2R3e` and `:CB4R3R4`, to be used with
     `A`. `:RK8`, the eleven-stage, eighth-order scheme of Cooper and Verner
-    (1972), needs Flows.jl with RK8, on the branch rk8 until it is merged.
+    (1972), needs a version of Flows.jl from October 2026 or later.
   - `oneevery = 1`: number of time steps between re-orthonormalisations,
     also the stride of the returned times.
   - `shift = identity`: function applied in place to each tangent vector
@@ -375,7 +375,7 @@ function floquet(L,
                             ":CB3R2R3c, :CB3R2R3e or :CB4R3R4"))
     isdefined(Flows, method) ||
         throw(ArgumentError("method :$method is not defined in this version of Flows.jl, " *
-                            ":RK8 needs Flows.jl with RK8 (branch rk8 until it is merged)"))
+                            ":RK8 needs a version of Flows.jl from October 2026 or later"))
     (method ∉ (:RK4, :RK8) || A === nothing) ||
         throw(ArgumentError("methods :RK4 and :RK8 are explicit, use an IMEX method with A"))
     vectors in (:none, :schur, :floquet) ||

@@ -6,7 +6,7 @@
 #     julia --project=examples -e 'using Pkg; Pkg.instantiate()'
 #     julia --project=examples examples/make_figures.jl
 #
-# The scheme :RK8 needs Flows.jl with RK8, on the branch rk8 until it is merged into master. The
+# The scheme :RK8 needs a version of Flows.jl from October 2026 or later. The
 # examples on the Kuramoto-Sivashinsky equation and on Kolmogorov flow are in the scripts
 # kuramoto_sivashinsky.jl and kolmogorov.jl, and the colours and theme of the figures in style.jl.
 
