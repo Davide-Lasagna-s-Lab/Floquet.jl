@@ -151,7 +151,9 @@ pair. The matrix of inner products `G[i, j] = dot(V[i], U[j])` is factored as
 a pair. Then `Φ = U R⁻¹` and `Ψ = V L⁻ᵀ`, so that `dot(Ψ[i], Φ[j]) = δᵢⱼ`.
 Each block of `Φ` is made orthonormal, and `Ψ` is changed to keep the
 biorthogonality. A real Floquet vector has unit norm, and the two vectors of
-a pair are an orthonormal basis of its plane. Return `Φ` and `Ψ`.
+a pair are the orthonormal basis of its plane closest to the two vectors of
+`U` of the pair, so that the basis varies continuously along the orbit, like
+`U`. Return `Φ` and `Ψ`.
 """
 function covariant(U, V, pairs)
     N = length(U)
@@ -201,6 +203,25 @@ function covariant(U, V, pairs)
         end
     end
 
+    # ---- the basis of the plane of each pair closest to its Schur vectors ----
+    # Only the plane of a pair is defined. The basis left by the factorisation
+    # turns with the adjoint basis, and it can turn quickly along the orbit.
+    # The orthonormal basis Q W of the plane closest to the Schur vectors U_b
+    # of the pair, with W the orthogonal factor of the polar decomposition of
+    # Qᵀ U_b, varies continuously, like U_b. For the leading pair it is U_b.
+    # Ψ_b ← Ψ_b W keeps ⟨Ψ, Φ⟩ = I, since W is orthogonal.
+    for b in blocks
+        length(b) == 2 || continue
+        F = svd([dot(Φ[i], U[j]) for i in b, j in b])
+        W = F.U * F.Vt
+        φ = copy.(Φ[b])
+        ψ = copy.(Ψ[b])
+        for k = 1:2
+            Φ[b[k]] .= W[1, k] .* φ[1] .+ W[2, k] .* φ[2]
+            Ψ[b[k]] .= W[1, k] .* ψ[1] .+ W[2, k] .* ψ[2]
+        end
+    end
+
     return Φ, Ψ
 end
 
@@ -244,7 +265,7 @@ relative periodic orbits. `dt` is the time step of the tangent integration.
     explicit `:RK4` or `:RK8`, or one of the IMEX schemes `:CNRK2`,
     `:CB3R2R2`, `:CB3R2R3c`, `:CB3R2R3e` and `:CB4R3R4`, to be used with
     `A`. `:RK8`, the eleven-stage, eighth-order scheme of Cooper and Verner
-    (1972), needs Flows.jl with RK8, on the branch rk8 until it is merged.
+    (1972), needs a version of Flows.jl from October 2026 or later.
   - `oneevery = 1`: number of time steps between re-orthonormalisations,
     also the stride of the returned times.
   - `shift = identity`: function applied in place to each tangent vector
@@ -313,8 +334,9 @@ with `vectors` are `nothing`.
     of the adjoint sweep at `times[k]`. The first `j` vectors span the
     invariant subspace of the `j` leading multipliers of the adjoint.
   - `floquetvectors`: `floquetvectors[k][j]` is the `j`-th Floquet vector
-    at `times[k]`, of unit norm. For a pair, the two vectors are an
-    orthonormal basis of its plane.
+    at `times[k]`, of unit norm. For a pair, the two vectors are the
+    orthonormal basis of its plane closest to the two vectors of `bases[k]`
+    of the pair, which varies continuously along the orbit.
   - `adjointvectors`: `adjointvectors[k][j]` is the `j`-th adjoint Floquet
     vector at `times[k]`, with `dot(adjointvectors[k][i],
     floquetvectors[k][j]) = δᵢⱼ`.
@@ -353,7 +375,7 @@ function floquet(L,
                             ":CB3R2R3c, :CB3R2R3e or :CB4R3R4"))
     isdefined(Flows, method) ||
         throw(ArgumentError("method :$method is not defined in this version of Flows.jl, " *
-                            ":RK8 needs Flows.jl with RK8 (branch rk8 until it is merged)"))
+                            ":RK8 needs a version of Flows.jl from October 2026 or later"))
     (method ∉ (:RK4, :RK8) || A === nothing) ||
         throw(ArgumentError("methods :RK4 and :RK8 are explicit, use an IMEX method with A"))
     vectors in (:none, :schur, :floquet) ||

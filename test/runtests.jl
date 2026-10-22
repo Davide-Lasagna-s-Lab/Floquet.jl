@@ -295,6 +295,18 @@ end
     @test abs(dot(Φ[2], Φ[3])) < 1e-14
     @test maximum(j -> abs(norm(Φ[j]) - 1), 1:n) < 1e-14
     @test biorth(Ψ, Φ) < 1e-12
+
+    # the basis of the plane is the one closest to the vectors of U of the
+    # pair, for which ⟨φᵢ, uⱼ⟩ is symmetric and positive definite on the pair
+    B = [dot(Φ[i], U[j]) for i = 2:3, j = 2:3]
+    @test norm(B - B') < 1e-12
+    @test minimum(eigvals(Symmetric(B))) > 0
+
+    # a leading pair at (1, 2), whose plane is that of the first two vectors
+    # of U: the basis is those two vectors
+    Φ, Ψ = Floquet.covariant(U, V, [1])
+    @test norm(Φ[1] - U[1]) + norm(Φ[2] - U[2]) < 1e-12
+    @test biorth(Ψ, Φ) < 1e-12
 end
 
 @testset "input checks                           " begin
@@ -711,6 +723,16 @@ end
     end < 1e-9
     @test maximum(k -> abs(dot(Φ[k][p], Φ[k][p+1])), eachindex(ts)) < 1e-13
     @test maximum(k -> biorth(Ψ[k], Φ[k]), eachindex(ts)) < 1e-12
+
+    # the basis of the plane of the pair is the one closest to the Schur
+    # vectors of the pair at every time, and it varies continuously along the
+    # orbit, like them, here by less than 1e-2 between times 1e-3 apart
+    B(k) = [dot(Φ[k][i], out.bases[k][j]) for i in p:p+1, j in p:p+1]
+    @test maximum(k -> norm(B(k) - B(k)'), eachindex(ts)) < 1e-12
+    @test minimum(k -> minimum(eigvals(Symmetric(B(k)))), eachindex(ts)) > 0
+    @test maximum(Iterators.product(1:length(ts)-1, p:p+1)) do (k, j)
+        norm(Φ[k+1][j] - Φ[k][j])
+    end < 1e-2
 
     # over the period: the real vectors are multiplied by their multipliers,
     # and the plane of the pair is invariant, with the multipliers of the pair

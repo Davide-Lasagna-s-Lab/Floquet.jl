@@ -6,7 +6,9 @@
 #     julia --project=examples -e 'using Pkg; Pkg.instantiate()'
 #     julia --project=examples examples/make_figures.jl
 #
-# The scheme :RK8 needs Flows.jl with RK8, on the branch rk8 until it is merged into master.
+# The scheme :RK8 needs a version of Flows.jl from October 2026 or later. The
+# examples on the Kuramoto-Sivashinsky equation and on Kolmogorov flow are in the scripts
+# kuramoto_sivashinsky.jl and kolmogorov.jl, and the colours and theme of the figures in style.jl.
 
 using LinearAlgebra
 using Printf
@@ -206,47 +208,7 @@ ab8 = runs[1]
 # Colours and theme of the figures                                             #
 # ============================================================================ #
 
-# The first three slots of a categorical palette validated for colour vision deficiency (all
-# pairs). The unstable, neutral and stable directions keep their colour in every figure, and
-# series without a role take the slots in order.
-const UNSTABLE = "#eb6834"
-const NEUTRAL  = "#1baf7a"
-const STABLE   = "#2a78d6"
-const SLOTS    = (STABLE, UNSTABLE, NEUTRAL)
-const INK      = "#0b0b0b"
-const INK2     = "#52514e"
-const MUTED    = "#898781"
-const GRID     = "#e1e0d9"
-const AXIS     = "#c3c2b7"
-
-set_theme!(Theme(fontsize        = 14,
-                 backgroundcolor = :white,
-                 figure_padding  = (8, 16, 8, 8),
-                 Axis   = (backgroundcolor    = :white,
-                           xgridcolor         = GRID,
-                           ygridcolor         = GRID,
-                           xminorgridvisible  = false,
-                           yminorgridvisible  = false,
-                           leftspinecolor     = AXIS,
-                           bottomspinecolor   = AXIS,
-                           topspinevisible    = false,
-                           rightspinevisible  = false,
-                           xtickcolor         = AXIS,
-                           ytickcolor         = AXIS,
-                           xticklabelcolor    = INK2,
-                           yticklabelcolor    = INK2,
-                           xlabelcolor        = INK,
-                           ylabelcolor        = INK,
-                           titlecolor         = INK),
-                 Legend = (framevisible = false,
-                           labelcolor   = INK2,
-                           patchsize    = (22, 12)),
-                 Lines  = (linewidth = 2,),
-                 Scatter = (markersize = 9,)))
-
-# the label of a panel, in its top left corner
-panel!(ax, s) = text!(ax, 0.02, 0.98; text=s, space=:relative, align=(:left, :top),
-                      font=:bold, color=INK, fontsize=15)
+include(joinpath(@__DIR__, "style.jl"))
 
 
 # ============================================================================ #
