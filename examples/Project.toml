@@ -1,0 +1,14 @@
+[deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+Floquet = "36c30fdc-f41a-44d4-8311-fdcb8429ae2f"
+Flows = "d910d432-2c57-11e9-263c-df934de6853d"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[sources]
+Floquet = {path = ".."}
+Flows = {url = "https://github.com/Davide-Lasagna-s-Lab/Flows.jl", rev = "rk8"}
+
+[compat]
+CairoMakie = "0.15"
+julia = "1.11"

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 300" role="img" aria-labelledby="title desc">
-  <title id="title">Lyapunov.jl logo</title>
-  <desc id="desc">A periodic orbit shaped as a figure of eight carries a ball of perturbations, which the flow stretches into longer and thinner ellipses in Julia colors, beside the Lyapunov.jl wordmark.</desc>
+  <title id="title">Floquet.jl logo</title>
+  <desc id="desc">A periodic orbit shaped as a figure of eight carries a ball of perturbations, which the flow stretches into longer and thinner ellipses in Julia colors, beside the Floquet.jl wordmark.</desc>
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0" stop-color="#ffffff"/>
@@ -33,10 +33,10 @@
   <!-- Wordmark and subtitle -->
   <g transform="translate(372 96)">
     <text x="0" y="48" font-family="Inter, Avenir, Helvetica, Arial, sans-serif"
-          font-size="58" font-weight="820" fill="#222734" letter-spacing="0">Lyapunov.jl</text>
+          font-size="58" font-weight="820" fill="#222734" letter-spacing="0">Floquet.jl</text>
     <text x="2" y="90" font-family="Inter, Avenir, Helvetica, Arial, sans-serif"
-          font-size="21" font-weight="700" fill="#4f596b" letter-spacing="0">Lyapunov and Floquet exponents of chaotic flows</text>
+          font-size="21" font-weight="700" fill="#4f596b" letter-spacing="0">Floquet exponents, vectors and adjoints</text>
     <text x="2" y="118" font-family="Inter, Avenir, Helvetica, Arial, sans-serif"
-          font-size="21" font-weight="700" fill="#4f596b" letter-spacing="0">and of their long periodic orbits.</text>
+          font-size="21" font-weight="700" fill="#4f596b" letter-spacing="0">of long periodic orbits of chaotic flows.</text>
   </g>
 </svg>
