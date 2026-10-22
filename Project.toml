@@ -1,4 +1,4 @@
-name = "Lyapunov"
+name = "Floquet"
 uuid = "36c30fdc-f41a-44d4-8311-fdcb8429ae2f"
 authors = ["Davide Lasagna <lasagnadavide@gmail.com>"]
 version = "0.1.0"
