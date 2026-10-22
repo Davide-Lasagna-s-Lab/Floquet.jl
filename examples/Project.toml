@@ -13,7 +13,7 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 [sources]
 Floquet = {path = ".."}
 Flows = {url = "https://github.com/Davide-Lasagna-s-Lab/Flows.jl", rev = "rk8"}
-KS = {path = "../../KS.jl"}
+KS = {url = "https://github.com/gasagna/KS.jl", rev = "dealias"}
 OpenKolmogorovFlow = {url = "https://github.com/Davide-Lasagna-s-Lab/OpenKolmogorovFlow.jl", rev = "master"}
 
 [compat]

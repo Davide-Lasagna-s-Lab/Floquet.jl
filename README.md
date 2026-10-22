@@ -1119,7 +1119,8 @@ include("test/runtests.jl")
 
 The figures in `assets/` and every number of this README come from the scripts
 `examples/make_figures.jl`, `examples/kuramoto_sivashinsky.jl` and `examples/kolmogorov.jl`. They
-share an environment, with CairoMakie, Flows.jl from the branch rk8, KS.jl and OpenKolmogorovFlow.jl,
+share an environment, with CairoMakie, Flows.jl from the branch rk8, KS.jl from the branch dealias and
+OpenKolmogorovFlow.jl, all from GitHub,
 and the colours and theme of the figures in `examples/style.jl`. The two orbits of the partial
 differential equations are read from `examples/data`. From the root of the repository, run
 
