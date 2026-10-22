@@ -1,7 +1,8 @@
 # The Floquet exponents and vectors of a relative periodic orbit of two-dimensional Kolmogorov
 # flow at Re = 40, of period 60.80, which visits a burst, the example of the README. Makes
-# assets/kolmogorov_exponents.png, assets/kolmogorov_vectors.png and
-# assets/kolmogorov_vectors.gif, and prints every number that the README quotes about this example.
+# assets/kolmogorov_vectors.png and assets/kolmogorov_vectors.gif, and prints every number that
+# the README quotes about this example. Fifty exponents, against the Arnoldi iteration, are in
+# kolmogorov_spectrum.jl.
 #
 #     julia -t 4 --project=examples examples/kolmogorov.jl
 #
@@ -145,53 +146,6 @@ tb   = ts[argmax(D)]
 
 
 # ============================================================================ #
-# Figure: the exponents and their convergence                                  #
-# ============================================================================ #
-
-# the colour of an exponent, unstable, neutral or stable, and its marker, real, negative
-# multiplier or complex pair. The zero exponents are those of the neutral plane, whatever the
-# small imaginary part that the iteration gives them.
-role(λ)   = abs(real(λ)) < 1e-6 ? NEUTRAL : real(λ) > 0 ? UNSTABLE : STABLE
-marker(λ) = abs(real(λ)) < 1e-6 || imag(λ) == 0 ? :circle :
-            abs(imag(λ) - π/T) < 1e-9 ? :utriangle : :diamond
-ring      = (marker=:circle, markersize=21, color=:transparent, strokecolor=INK, strokewidth=1.2)
-
-λ   = out.exponents
-fig = Figure(size=(820, 360))
-ax1 = Axis(fig[1, 1]; xlabel=L"j", ylabel=L"\mathrm{Re}\,\lambda_j", xticks=1:8)
-ax2 = Axis(fig[1, 2]; xlabel="period", ylabel=L"|\lambda_j^{(p)} - \lambda_j|", yscale=log10,
-           yticks=LogTicks(-12:3:0), xticks=0:3:18)
-hlines!(ax1, [0.0]; color=AXIS, linewidth=1)
-scatter!(ax1, 1:8, real.(arnoldi); ring...)
-for j in eachindex(λ)
-    scatter!(ax1, [j], [real(λ[j])]; color=role(λ[j]), marker=marker(λ[j]), markersize=13,
-             strokecolor=:white, strokewidth=1.5)
-end
-Legend(fig[0, 1], [MarkerElement(color=INK2, marker=:circle, markersize=11),
-                   MarkerElement(color=INK2, marker=:utriangle, markersize=11),
-                   MarkerElement(color=INK2, marker=:diamond, markersize=11),
-                   MarkerElement(; ring..., markersize=15)],
-       ["real", "negative multiplier", "complex pair", "Arnoldi iteration"];
-       orientation=:horizontal, framevisible=false, labelcolor=INK2, tellwidth=false, nbanks=2)
-
-# the distance of each exponent from its final value over the periods, one line per pair
-P = length(out.history)
-for j in eachindex(λ)
-    marker(λ[j]) === :diamond && imag(λ[j]) < 0 && continue
-    e = [max(abs(h[j] - λ[j]), 1e-15) for h in out.history[1:P-1]]
-    scatterlines!(ax2, 1:P-1, e; color=role(λ[j]), markersize=7, strokecolor=:white, strokewidth=1)
-end
-ylims!(ax1, -0.075, 0.16)
-ylims!(ax2, 1e-13, 1)
-axislegend(ax2, [LineElement(color=c, linewidth=2) for c in (UNSTABLE, NEUTRAL, STABLE)],
-           ["unstable", "neutral", "stable"]; position=:rt)
-panel!(ax1, "(a)")
-panel!(ax2, "(b)")
-save(joinpath(ASSETS, "kolmogorov_exponents.png"), fig; px_per_unit=2)
-println("written assets/kolmogorov_exponents.png")
-
-
-# ============================================================================ #
 # The vectors along the period                                                 #
 # ============================================================================ #
 
@@ -241,7 +195,7 @@ function layout(fig, k, s)
         ax = Axis(fig[1, i]; xlabel=L"x", ylabel=i == 1 ? L"y" : "", title=names[i],
                   aspect=DataAspect(), limits=(0, 2π, 0, 2π), xticks=([0, π, 2π], ["0", "π", "2π"]),
                   yticks=([0, π, 2π], ["0", "π", "2π"]), yticklabelsvisible=i == 1)
-        heatmap!(ax, xs, xs, obs[i]; colormap=DIVERGING, colorrange=(-1, 1))
+        heatmap!(ax, xs, xs, obs[i]; colormap=DIVERGING, colorrange=(-1, 1), interpolate=true)
         hidespines!(ax)
         ax.xgridvisible = false
         ax.ygridvisible = false
@@ -259,29 +213,31 @@ kb  = argmin(abs.(out.times .- tb))
 fig = Figure(size=(820, 250))
 layout(fig, kb, [maximum(abs, f[kb]) for f in fields])
 resize_to_layout!(fig)
-save(joinpath(ASSETS, "kolmogorov_vectors.png"), fig; px_per_unit=2)
+save(joinpath(ASSETS, "kolmogorov_vectors.png"), fig; px_per_unit=3)
 @printf "still figure at t = %.2f, the peak of the burst at t = %.2f\n" out.times[kb] tb
 
 # ---- the animation over one period, each field scaled by its largest absolute value over the
-#      period. The frames are written as images, and made into a GIF by FFmpeg with a palette
-#      of 96 colours, without dithering, which keeps the file small. The last frame, at T, is
-#      the first one in the drifting frame, up to the sign of the vectors, and it is left out. ----
+#      period, at every other time, the peak of the burst among them. The frames are written as
+#      images of 1640 pixels across, and made into a GIF by FFmpeg with a palette of 256
+#      colours, without dithering, which keeps the file below 10 MB. The time T, where the fields
+#      are those at the start in the drifting frame, up to the sign of the vectors, is left out ----
 fig = Figure(size=(820, 270))
 obs = layout(fig, 1, [maximum(maximum(abs, A) for A in f) for f in fields])
 lab = Observable("")
 Label(fig[0, 1:5], lab; color=INK2, fontsize=14, halign=:left, tellwidth=false)
 resize_to_layout!(fig)
 dir = mktempdir()
-for k = 1:K-1
+ks  = mod1(kb, 2):2:K-1
+for (q, k) in enumerate(ks)
     for i = 1:4
         obs[i][] = fields[i][k] ./ maximum(maximum(abs, A) for A in fields[i])
     end
     lab[] = @sprintf("t = %.1f, dissipation %.3f of the laminar value", out.times[k],
                      dissrate(store(similar(Ω0), out.times[k]), Re)/Dlam)
-    save(joinpath(dir, @sprintf("frame_%03d.png", k)), fig; px_per_unit=1)
+    save(joinpath(dir, @sprintf("frame_%03d.png", q)), fig; px_per_unit=2)
 end
 gif     = joinpath(ASSETS, "kolmogorov_vectors.gif")
-palette = "split[s0][s1];[s0]palettegen=max_colors=96:stats_mode=full[p];[s1][p]paletteuse=dither=none"
-run(`$(FFMPEG_jll.ffmpeg()) -y -loglevel error -framerate 10 -i $(joinpath(dir, "frame_%03d.png")) -vf $palette -loop 0 $gif`)
-@printf "written assets/kolmogorov_vectors.png and assets/kolmogorov_vectors.gif, %d frames, %.1f MB\n" K-1 filesize(gif)/1e6
+palette = "split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=full[p];[s1][p]paletteuse=dither=none"
+run(`$(FFMPEG_jll.ffmpeg()) -y -loglevel error -framerate 5 -i $(joinpath(dir, "frame_%03d.png")) -vf $palette -loop 0 $gif`)
+@printf "written assets/kolmogorov_vectors.png and assets/kolmogorov_vectors.gif, %d frames, %.1f MB\n" length(ks) filesize(gif)/1e6
 @printf "%.1f minutes in all\n" (time() - t₀)/60

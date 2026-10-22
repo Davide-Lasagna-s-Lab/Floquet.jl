@@ -460,8 +460,9 @@ $2 \times 10^{-11}$.
 
 The scripts in [examples](examples) run the examples of this section, make the figures and print
 every number quoted in this README. The script [make_figures.jl](examples/make_figures.jl) runs
-those on the Lorenz equations, and [kuramoto_sivashinsky.jl](examples/kuramoto_sivashinsky.jl) and
-[kolmogorov.jl](examples/kolmogorov.jl) those on the two partial differential equations.
+those on the Lorenz equations, and [kuramoto_sivashinsky.jl](examples/kuramoto_sivashinsky.jl),
+[kolmogorov.jl](examples/kolmogorov.jl) and [kolmogorov_spectrum.jl](examples/kolmogorov_spectrum.jl)
+those on the two partial differential equations.
 
 ### The Lorenz orbit AB
 
@@ -936,18 +937,49 @@ equal and the iteration turns the basis of their plane slightly at each period. 
 direction of the flow and the derivative $\partial_x \omega$ lie in the plane of their Floquet
 vectors to $10^{-5}$, and the Floquet vectors and their adjoints are biorthogonal to $10^{-13}$.
 
-On this long orbit the iteration converges in 18 periods (Figure 7). The largest ratio of the moduli
-of consecutive multipliers is 0.33, so that each period gains at least a factor of three on every
+On this long orbit the iteration converges in 18 periods. The largest ratio of the moduli of
+consecutive multipliers is 0.33, so that each period gains at least a factor of three on every
 exponent. The forward and the adjoint sweeps take about fifteen minutes on a laptop, with four
 threads for the Fourier transforms.
 
+A longer run shows how deep into the stable part of the spectrum the periodic Schur decomposition
+reaches. The script [kolmogorov_spectrum.jl](examples/kolmogorov_spectrum.jl) computes fifty
+exponents of the same orbit, without the vectors,
+
+```julia
+# fifty random initial vectors, real fields of zero mean on the active modes
+rng  = MersenneTwister(1)
+init = [FFT(Field(randn(rng, 2m + 2, 2m + 2)), n) for j = 1:50]
+
+# fifty exponents without the vectors, over 36 periods
+deep = floquet(lex, 50, T/3040, store; A=lim, method=:CB4R3R4, init=init, oneevery=50,
+               shift = v -> xshift!(v, ℓ), λtol=1e-10, maxiter=36)
+```
+
+and the eigenvalues of the monodromy matrix $\tilde M$ from 100 steps of the Arnoldi iteration, in
+which each product $\tilde M v$ is one integration of the linearised equations over the period, with
+the same scheme and step.
+
+Figure 7 compares the two. The first eleven exponents agree to $10^{-11}$. Further down, the
+eigenvalues of $\tilde M$ lose accuracy as the multipliers shrink. They differ from the exponents of
+Floquet.jl by $10^{-4}$ at $j = 22$, where $|\Lambda_j/\Lambda_1| \approx 10^{-11}$, and from
+$j = 33$ they pile up between $-0.50$ and $-0.42$, about the level
+$\lambda_1 - \log(1/\varepsilon)/T = -0.47$ at which $|\Lambda_j/\Lambda_1|$ reaches the machine
+precision. The exponents of Floquet.jl continue down to $-0.66$, eighteen of them below that level.
+Most of them converge within the 36 periods, each at the rate of its gap to the next. Two groups of
+three, near $-0.12$ and $-0.59$, have not separated, because the moduli within each group are
+nearly equal, while the sum of each group has converged. The run takes about two hours on a laptop,
+with four threads.
+
 <p align="center">
-  <img src="assets/kolmogorov_exponents.png" alt="The exponents of the relative periodic orbit of Kolmogorov flow and their convergence" width="820">
+  <img src="assets/kolmogorov_exponents.png" alt="Fifty exponents of the relative periodic orbit of Kolmogorov flow against the eigenvalues of the monodromy matrix" width="820">
 </p>
 
-*Figure 7. The exponents of the relative periodic orbit of Kolmogorov flow. (a) Real parts, with
-those of the Arnoldi iteration (circles). (b) Distance of each exponent from its final value over
-the periods of the iteration, one line for each pair.*
+*Figure 7. Fifty exponents of the relative periodic orbit of Kolmogorov flow. (a) Real parts, with
+those of the eigenvalues of the monodromy matrix from the Arnoldi iteration (circles) and, dashed,
+the level at which $`|\Lambda_j/\Lambda_1|`$ reaches the machine precision. The exponents not yet
+separated from their neighbours are hollow. (b) Change of each exponent from one period of the
+iteration to the next.*
 
 Figure 8 animates the orbit and its three leading Floquet vectors over one period. The vectors are
 those at $t = 0$, carried along the orbit by the linearised equations and multiplied by
@@ -1105,7 +1137,8 @@ the check of the error.
 ## Reproducing the figures
 
 The figures in `assets/` and every number of this README come from the scripts
-`examples/make_figures.jl`, `examples/kuramoto_sivashinsky.jl` and `examples/kolmogorov.jl`. They
+`examples/make_figures.jl`, `examples/kuramoto_sivashinsky.jl`, `examples/kolmogorov.jl` and
+`examples/kolmogorov_spectrum.jl`. They
 share an environment, with CairoMakie, Flows.jl, KS.jl and OpenKolmogorovFlow.jl, all from GitHub,
 and the colours and theme of the figures in `examples/style.jl`. The two orbits of the partial
 differential equations are read from `examples/data`. From the root of the repository, run
@@ -1115,10 +1148,12 @@ julia --project=examples -e 'using Pkg; Pkg.instantiate()'
 julia --project=examples examples/make_figures.jl
 julia --project=examples examples/kuramoto_sivashinsky.jl
 julia -t 4 --project=examples examples/kolmogorov.jl
+julia -t 4 --project=examples examples/kolmogorov_spectrum.jl
 ```
 
-The first two scripts take a few minutes each, and the third about fifteen, most of them for the
-two sweeps of `floquet` on the orbit of Kolmogorov flow. The logo is drawn by `assets/make_logo.jl`.
+The first two scripts take a few minutes each, the third about fifteen, most of them for the two
+sweeps of `floquet` on the orbit of Kolmogorov flow, and the last one about two hours, for the fifty
+exponents of the same orbit. The logo is drawn by `assets/make_logo.jl`.
 
 
 ## References

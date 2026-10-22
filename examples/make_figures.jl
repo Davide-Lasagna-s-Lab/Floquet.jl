@@ -6,9 +6,9 @@
 #     julia --project=examples -e 'using Pkg; Pkg.instantiate()'
 #     julia --project=examples examples/make_figures.jl
 #
-# The scheme :RK8 needs a version of Flows.jl from October 2026 or later. The
-# examples on the Kuramoto-Sivashinsky equation and on Kolmogorov flow are in the scripts
-# kuramoto_sivashinsky.jl and kolmogorov.jl, and the colours and theme of the figures in style.jl.
+# The scheme :RK8 needs a version of Flows.jl from October 2026 or later. The examples on the
+# Kuramoto-Sivashinsky equation and on Kolmogorov flow are in the scripts kuramoto_sivashinsky.jl,
+# kolmogorov.jl and kolmogorov_spectrum.jl, and the colours and theme of the figures in style.jl.
 
 using LinearAlgebra
 using Printf
@@ -242,7 +242,7 @@ xlims!(ax2, 0, 25)
 axislegend(ax2; position=:rt)
 panel!(ax1, "(a)")
 panel!(ax2, "(b)")
-save(joinpath(ASSETS, "convergence.png"), fig; px_per_unit=2)
+save(joinpath(ASSETS, "convergence.png"), fig; px_per_unit=3)
 
 
 # ============================================================================ #
@@ -265,7 +265,7 @@ for (j, c, s) in zip(1:3, (UNSTABLE, NEUTRAL, STABLE), ("unstable", "neutral", "
 end
 xlims!(ax, -0.02, 1.17)
 axislegend(ax; position=:lb)
-save(joinpath(ASSETS, "stretching.png"), fig; px_per_unit=2)
+save(joinpath(ASSETS, "stretching.png"), fig; px_per_unit=3)
 
 
 # ============================================================================ #
@@ -324,7 +324,7 @@ ylims!(ax2, 0, 180)
 Legend(fig[0, 2], ax2; orientation=:horizontal, framevisible=false, labelcolor=INK2, tellwidth=false)
 panel!(ax1, "(a)")
 panel!(ax2, "(b)")
-save(joinpath(ASSETS, "vectors.png"), fig; px_per_unit=2)
+save(joinpath(ASSETS, "vectors.png"), fig; px_per_unit=3)
 
 
 # ============================================================================ #
@@ -428,6 +428,6 @@ arc = [7.0*cis(θ) for θ in range(0, ℓ; length=40)]
 lines!(ax, real.(arc), imag.(arc); color=INK2, linewidth=1.5)
 text!(ax, 10.5*cos(ℓ/2), 10.5*sin(ℓ/2); text=L"\ell", align=(:center, :center), color=INK, fontsize=17)
 axislegend(ax; position=:lb)
-save(joinpath(ASSETS, "rpo.png"), fig; px_per_unit=2)
+save(joinpath(ASSETS, "rpo.png"), fig; px_per_unit=3)
 @printf "period starts at angles %s degrees, ℓ = %.2f degrees\n" join([@sprintf("%.2f", rad2deg(Base.angle(s))) for s in starts], ", ") rad2deg(ℓ)
 println("\nwritten assets/convergence.png, assets/stretching.png, assets/vectors.png and assets/rpo.png")

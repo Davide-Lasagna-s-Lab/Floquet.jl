@@ -173,7 +173,7 @@ axislegend(ax2, [LineElement(color=c, linewidth=2) for c in (UNSTABLE, NEUTRAL, 
            ["unstable", "neutral", "stable"]; position=:rt)
 panel!(ax1, "(a)")
 panel!(ax2, "(b)")
-save(joinpath(ASSETS, "ks_exponents.png"), fig; px_per_unit=2)
+save(joinpath(ASSETS, "ks_exponents.png"), fig; px_per_unit=3)
 println("written assets/ks_exponents.png")
 
 
@@ -206,5 +206,5 @@ end
 Colorbar(fig[1, 4]; colormap=DIVERGING, limits=(-1, 1), ticks=[-1, 0, 1], width=12,
          label="scaled by the largest value", labelcolor=INK2, ticklabelcolor=INK2,
          tickcolor=AXIS, spinewidth=0)
-save(joinpath(ASSETS, "ks_vectors.png"), fig; px_per_unit=2)
+save(joinpath(ASSETS, "ks_vectors.png"), fig; px_per_unit=3)
 println("written assets/ks_vectors.png")
