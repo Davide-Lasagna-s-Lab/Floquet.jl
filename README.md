@@ -365,10 +365,12 @@ The keyword arguments are listed in the following table.
 | `θtol`     | `1e-7`     | Tolerance to detect the $2\times 2$ rotation blocks of $D$ that flag complex pairs. |
 | `maxiter`  | `50`       | Maximum number of periods of each sweep. |
 | `verbose`  | `false`    | Print the exponents after each period of both sweeps. |
+| `algorithm` | `:schur`  | With `:arnoldi`, compute instead the exponents of the eigenvalues of the monodromy matrix by the Arnoldi iteration, as described below. |
 
 The function returns a named tuple with the fields of the following table. The fields that were not
 requested with `vectors` are `nothing`, and the first four fields are those of earlier versions of
-the package.
+the package. With `algorithm = :arnoldi`, only the first three fields are returned, and the others
+are `nothing`.
 
 | Field              | Returned with        | Content |
 |--------------------|----------------------|---------|
@@ -454,6 +456,33 @@ imex = floquet(lorenz_tan_ex, 3, T/n, store; A=Diagonal([-10.0, -1.0, -8/3]), me
 With the storage of the orbit AB of the next section, the exponents of this IMEX computation agree
 with those of RK4 to $3 \times 10^{-10}$, and its adjoint exponents agree with the forward ones to
 $2 \times 10^{-11}$.
+
+### The Arnoldi iteration
+
+With `algorithm = :arnoldi`, `floquet` computes instead the exponents of the eigenvalues of the
+monodromy matrix by the Arnoldi iteration, the usual method discussed in the comparison above. It
+builds an orthonormal basis of the Krylov space
+
+```math
+\mathcal{K}_N = \mathrm{span}\, \{ v, \tilde M v, \dots, \tilde M^{N-1} v \} ,
+```
+
+where $v$ is the normalised sum of the initial vectors, and returns the exponents of the $N$
+eigenvalues of the Hessenberg matrix of $\tilde M$ in this basis, the Ritz values. Each product
+$\tilde M v$ is one integration of the linearised equations over the period, followed by `shift`, so
+that the iteration costs as much as one period of the periodic Schur decomposition with $N$ vectors.
+The Ritz values converge from the leading one, and $N$ should exceed the number of wanted exponents.
+The multipliers smaller than about $\varepsilon |\Lambda_1|$ are lost, as for any eigenvalue solver
+applied to the monodromy matrix, so that the option serves for comparison. No vectors are returned,
+`periods` is $N$, and `converged` tells whether the residual estimates of all the Ritz pairs,
+relative to their Ritz values, are below `λtol`. For the orbit AB of the next section,
+
+```julia
+ritz = floquet(lorenz_tan, 3, T/n, store; algorithm=:arnoldi)
+```
+
+gives the two leading exponents of `floquet` to $10^{-11}$, and the stable one only to
+$10^{-5}$, since its multiplier is $2.5 \times 10^{-11}$ times the leading one.
 
 
 ## Examples
@@ -944,32 +973,38 @@ threads for the Fourier transforms.
 
 A longer run shows how deep into the stable part of the spectrum the periodic Schur decomposition
 reaches. The script [kolmogorov_spectrum.jl](examples/kolmogorov_spectrum.jl) computes fifty
-exponents of the same orbit, without the vectors,
+exponents of the same orbit, without the vectors, and the exponents of the eigenvalues of the
+monodromy matrix from 100 steps of the Arnoldi iteration, with the same integration of the
+linearised equations. A looser tolerance on the rotation blocks, `θtol = 1e-3`, finds the complex
+pairs among multipliers of nearly equal modulus before these have fully separated.
 
 ```julia
-# fifty random initial vectors, real fields of zero mean on the active modes
+# a hundred random initial vectors, real fields of zero mean on the active modes
 rng  = MersenneTwister(1)
-init = [FFT(Field(randn(rng, 2m + 2, 2m + 2)), n) for j = 1:50]
+init = [FFT(Field(randn(rng, 2m + 2, 2m + 2)), n) for j = 1:100]
 
-# fifty exponents without the vectors, over 36 periods
-deep = floquet(lex, 50, T/3040, store; A=lim, method=:CB4R3R4, init=init, oneevery=50,
-               shift = v -> xshift!(v, ℓ), λtol=1e-10, maxiter=36)
+# fifty exponents without the vectors, from the first fifty, over 100 periods
+deep = floquet(lex, 50, T/3040, store; A=lim, method=:CB4R3R4, init=init[1:50], oneevery=50,
+               shift = v -> xshift!(v, ℓ), λtol=1e-10, θtol=1e-3, maxiter=100)
+
+# the exponents of the Ritz values of 100 steps of the Arnoldi iteration, from the sum of the
+# hundred initial vectors, with the same integration of the linearised equations
+ritz = floquet(lex, 100, T/3040, store; A=lim, method=:CB4R3R4, init=init, algorithm=:arnoldi,
+               shift = v -> xshift!(v, ℓ))
 ```
 
-and the eigenvalues of the monodromy matrix $\tilde M$ from 100 steps of the Arnoldi iteration, in
-which each product $\tilde M v$ is one integration of the linearised equations over the period, with
-the same scheme and step.
-
-Figure 7 compares the two. The first eleven exponents agree to $10^{-11}$. Further down, the
-eigenvalues of $\tilde M$ lose accuracy as the multipliers shrink. They differ from the exponents of
-Floquet.jl by $10^{-4}$ at $j = 22$, where $|\Lambda_j/\Lambda_1| \approx 10^{-11}$, and from
-$j = 33$ they pile up between $-0.50$ and $-0.42$, about the level
-$\lambda_1 - \log(1/\varepsilon)/T = -0.47$ at which $|\Lambda_j/\Lambda_1|$ reaches the machine
-precision. The exponents of Floquet.jl continue down to $-0.66$, eighteen of them below that level.
-Most of them converge within the 36 periods, each at the rate of its gap to the next. Two groups of
-three, near $-0.12$ and $-0.59$, have not separated, because the moduli within each group are
-nearly equal, while the sum of each group has converged. The run takes about two hours on a laptop,
-with four threads.
+Figure 7 compares the two. The first eighteen exponents agree to $10^{-6}$, apart from the two zero
+exponents, which both methods give to the accuracy of the integration, $3 \times 10^{-8}$. Further
+down, the eigenvalues of $\tilde M$ lose accuracy as the multipliers shrink. They differ from the
+exponents of Floquet.jl by $4 \times 10^{-4}$ at $j = 22$, where
+$|\Lambda_j/\Lambda_1| \approx 10^{-11}$, and from $j = 33$ they pile up between $-0.49$ and
+$-0.41$, about the level $\lambda_1 - \log(1/\varepsilon)/T = -0.47$ at which
+$|\Lambda_j/\Lambda_1|$ reaches the machine precision. The exponents of Floquet.jl continue down to
+$-0.66$, eighteen of them below that level. Most of them converge well within the 100 periods. The
+last are two groups of three, near $-0.12$ and $-0.59$, each a complex pair and a real exponent
+whose moduli differ by a factor of about 0.9 per period. After 100 periods they change by about
+$10^{-6}$ from one period to the next. The run takes about five hours on a laptop, with four
+threads.
 
 <p align="center">
   <img src="assets/kolmogorov_exponents.png" alt="Fifty exponents of the relative periodic orbit of Kolmogorov flow against the eigenvalues of the monodromy matrix" width="820">
@@ -977,9 +1012,8 @@ with four threads.
 
 *Figure 7. Fifty exponents of the relative periodic orbit of Kolmogorov flow. (a) Real parts, with
 those of the eigenvalues of the monodromy matrix from the Arnoldi iteration (circles) and, dashed,
-the level at which $`|\Lambda_j/\Lambda_1|`$ reaches the machine precision. The exponents not yet
-separated from their neighbours are hollow. (b) Change of each exponent from one period of the
-iteration to the next.*
+the level at which $`|\Lambda_j/\Lambda_1|`$ reaches the machine precision. (b) Change of each
+exponent from one period of the iteration to the next.*
 
 Figure 8 animates the orbit and its three leading Floquet vectors over one period. The vectors are
 those at $t = 0$, carried along the orbit by the linearised equations and multiplied by
@@ -1121,7 +1155,9 @@ eigenvectors of linear systems with a complex pair, with negative multipliers wh
 differs from the order of the exponents, and with shifts that commute and that do not commute with
 the system, and on the relative periodic orbit of the previous section, where the flow and the group
 tangent must lie in the neutral plane. The basis of the plane of a pair must be the one closest to
-the Schur vectors of the pair at every time, and vary continuously along the orbit. The tests of RK8
+the Schur vectors of the pair at every time, and vary continuously along the orbit. The Arnoldi
+iteration is checked against the periodic Schur decomposition on the orbit AB, and against the
+multipliers of the linear systems with negative multipliers, a complex pair and a shift. The tests of RK8
 check the sum rule to $10^{-12}$, and run
 only with a Flows.jl that has RK8. Otherwise they check that `method = :RK8` gives an informative
 error. Run the tests with
@@ -1152,7 +1188,7 @@ julia -t 4 --project=examples examples/kolmogorov_spectrum.jl
 ```
 
 The first two scripts take a few minutes each, the third about fifteen, most of them for the two
-sweeps of `floquet` on the orbit of Kolmogorov flow, and the last one about two hours, for the fifty
+sweeps of `floquet` on the orbit of Kolmogorov flow, and the last one about five hours, for the fifty
 exponents of the same orbit. The logo is drawn by `assets/make_logo.jl`.
 
 

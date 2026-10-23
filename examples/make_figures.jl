@@ -179,6 +179,10 @@ let G = flow(couple(lorenz, lorenz_tan, lorenz_tan, lorenz_tan),
     @printf "closure of the RK4 orbit %.1e, λ₁ against eig(M) with RK4 %.1e\n" norm(z[1] - x0) abs(real(out.exponents[1]) - log(maximum(abs, eigvals(hcat(z[2], z[3], z[4]))))/T)
 end
 
+# the exponents of the eigenvalues of the monodromy matrix, by the Arnoldi iteration
+ritz = floquet(lorenz_tan, 3, T/n, store; algorithm=:arnoldi)
+@printf "Arnoldi: λ₁ and λ₂ against floquet %.1e, λ₃ %.1e, |Λ₃/Λ₁| %.1e\n" maximum(abs, ritz.exponents[1:2] .- out.exponents[1:2]) abs(ritz.exponents[3] - out.exponents[3]) exp((real(out.exponents[3]) - real(out.exponents[1]))*T)
+
 # the same with the default tolerance, and the first lines printed with verbose = true
 dflt = floquet(lorenz_tan, 3, T/n, store)
 @printf "default λtol: %d periods, λ₂ = %.1e\n" dflt.periods real(dflt.exponents[2])

@@ -5,8 +5,8 @@
 #
 #     julia -t 4 --project=examples examples/kolmogorov_spectrum.jl
 #
-# The orbit and the equations are those of kolmogorov.jl. The run takes about two hours on a
-# laptop, with four threads for the Fourier transforms, most of it for the 36 periods of floquet.
+# The orbit and the equations are those of kolmogorov.jl. The run takes about five hours on a
+# laptop, with four threads for the Fourier transforms, most of it for the 100 periods of floquet.
 
 using DelimitedFiles
 using LinearAlgebra
@@ -63,13 +63,13 @@ lex, lim = splitexim(LinearisedEquation(n, m, Re, TangentMode(), FFTW.MEASURE))
 # Fifty exponents by the periodic Schur decomposition                          #
 # ============================================================================ #
 
-# fifty random initial vectors, real fields of zero mean on the active modes
+# a hundred random initial vectors, real fields of zero mean on the active modes
 rng  = MersenneTwister(1)
-init = [FFT(Field(randn(rng, 2m + 2, 2m + 2)), n) for j = 1:50]
+init = [FFT(Field(randn(rng, 2m + 2, 2m + 2)), n) for j = 1:100]
 
-# fifty exponents without the vectors, over 36 periods
-deep = floquet(lex, 50, T/3040, store; A=lim, method=:CB4R3R4, init=init, oneevery=50,
-               shift = v -> xshift!(v, ℓ), λtol=1e-10, maxiter=36)
+# fifty exponents without the vectors, from the first fifty, over 100 periods
+deep = floquet(lex, 50, T/3040, store; A=lim, method=:CB4R3R4, init=init[1:50], oneevery=50,
+               shift = v -> xshift!(v, ℓ), λtol=1e-10, θtol=1e-3, maxiter=100)
 
 t₁ = time()
 @printf "floquet: %d periods, converged %s, %.1f minutes with %d threads\n" deep.periods deep.converged (t₁ - t₀)/60 Threads.nthreads()
@@ -79,40 +79,15 @@ t₁ = time()
 # The eigenvalues of the monodromy matrix, by the Arnoldi iteration            #
 # ============================================================================ #
 
-# the monodromy matrix in the frame of the orbit, M̃ v = σ₋ℓ Y(T, 0) v, applied by one integration
-# of the linearised equations over the period, with the scheme and the step of floquet
-G = flow(lex, lim, CB4R3R4(similar(Ω0), ContinuousMode(false)), TimeStepFromStorage(T/3040))
-function monodromy!(v)
-    G(v, store, (0.0, T))
-    return xshift!(v, ℓ)
-end
-
-# K steps of the Arnoldi iteration from a random field, with Gram-Schmidt twice in each step
-K = 100
-Q = [FFT(Field(randn(MersenneTwister(2), 2m + 2, 2m + 2)), n)]
-Q[1] ./= norm(Q[1])
-H = zeros(K + 1, K)
-for j = 1:K
-    w = monodromy!(copy(Q[j]))
-    for _ = 1:2, i = 1:j
-        h = dot(Q[i], w)
-        H[i, j] += h
-        w .-= h .* Q[i]
-    end
-    H[j+1, j] = norm(w)
-    w ./= H[j+1, j]
-    push!(Q, w)
-end
-
-# the exponents of the Ritz values, sorted by real part, and the residual of each Ritz pair
-E  = eigen(H[1:K, 1:K])
-λA = log.(complex(E.values)) ./ T
-p  = sortperm(λA; by=z -> (real(z), imag(z)), rev=true)
-λA = λA[p]
-ρA = abs.(H[K+1, K] .* E.vectors[K, p]) ./ abs.(E.values[p])
+# the exponents of the Ritz values of 100 steps of the Arnoldi iteration, from the sum of the
+# hundred initial vectors, with the same integration of the linearised equations
+ritz = floquet(lex, 100, T/3040, store; A=lim, method=:CB4R3R4, init=init, algorithm=:arnoldi,
+               shift = v -> xshift!(v, ℓ))
+λA   = ritz.exponents
+K    = length(λA)
 
 t₂ = time()
-@printf "Arnoldi: %d steps, %.1f minutes, last subdiagonal entry %.1e\n" K (t₂ - t₁)/60 H[K+1, K]
+@printf "Arnoldi: %d steps, %.1f minutes\n" K (t₂ - t₁)/60
 
 
 # ============================================================================ #
@@ -130,8 +105,11 @@ for j = 1:N
 end
 
 # ---- where the eigenvalues of the monodromy matrix depart from the exponents of floquet ----
-j0 = findfirst(j -> abs(real(λA[j] - λ[j])) > 1e-10, 1:N) - 1
-@printf "\nthe first %d exponents agree to %.1e\n" j0 maximum(abs, λA[1:j0] .- λ[1:j0])
+# the two zero exponents are compared apart, as both methods give them to the accuracy of the
+# integration, the iteration as two real exponents and the Arnoldi iteration as a pair
+jz = findall(z -> abs(real(z)) < 1e-6, λ)
+@printf "\nzero exponents: floquet %s, Arnoldi %s\n" join([@sprintf("%.1e", real(λ[j])) for j in jz], " ") join([@sprintf("%.1e%+.1ei", real(λA[j]), imag(λA[j])) for j in jz], " ")
+@printf "largest difference over the first eighteen exponents, the zero ones apart, %.1e\n" maximum(abs(λA[j] - λ[j]) for j in setdiff(1:18, jz))
 @printf "at j = 22: floquet %.6f, Arnoldi %.6f, difference %.1e, |Λ₂₂/Λ₁| = %.1e\n" real(λ[22]) real(λA[22]) abs(real(λA[22] - λ[22])) exp((real(λ[22]) - real(λ[1]))*T)
 @printf "rounding level λ₁ - log(1/ε)/T = %.3f, Arnoldi from j = 33 to %d between %.3f and %.3f\n" fl K minimum(real, λA[33:K]) maximum(real, λA[33:K])
 @printf "floquet: %d exponents below the rounding level, the deepest %.3f\n" count(z -> real(z) < fl, λ) real(λ[N])
@@ -141,13 +119,24 @@ for tol in (1e-10, 1e-8, 1e-6, 1e-4)
     @printf "exponents that changed by less than %.0e over the last period: %d of %d\n" tol count(<(tol), dλ) N
 end
 slow   = findall(>(1e-4), dλ)
-groups = [[slow[1]]]
-for j in slow[2:end]
-    j - groups[end][end] ≤ 2 ? push!(groups[end], j) : push!(groups, [j])
+groups = Vector{Int}[]
+for j in slow
+    isempty(groups) || j - groups[end][end] > 2 ? push!(groups, [j]) : push!(groups[end], j)
 end
 for g in groups
     s(p) = sum(real(deep.history[p][i]) for i in g)
     @printf "not separated: exponents %s near %.3f, the sum of their real parts %.6f changed by %.1e over the last period\n" string(g) s(P)/length(g) s(P) abs(s(P) - s(P-1))
+end
+
+# ---- the exponents that converge last, and the ratio of the moduli within each group of them ----
+latest = findall(>(1e-10), dλ)
+lgroups = Vector{Int}[]
+for j in latest
+    @printf "converging last: λ%d = %+.6f %+.6fi, changed by %.1e over the last period\n" j real(λ[j]) imag(λ[j]) dλ[j]
+    isempty(lgroups) || j - lgroups[end][end] > 2 ? push!(lgroups, [j]) : push!(lgroups[end], j)
+end
+for g in lgroups
+    @printf "ratio of the moduli within %s: %.3f per period\n" string(g) exp(-(maximum(real, λ[g]) - minimum(real, λ[g]))*T)
 end
 @printf "%.1f minutes in all\n" (time() - t₀)/60
 
@@ -167,7 +156,7 @@ ring      = (marker=:circle, markersize=15, color=:transparent, strokecolor=INK,
 
 fig = Figure(size=(820, 380))
 ax1 = Axis(fig[1, 1]; xlabel=L"j", ylabel=L"\mathrm{Re}\,\lambda_j", xticks=0:10:N)
-ax2 = Axis(fig[1, 2]; xlabel="period", ylabel=L"j", yreversed=true, xticks=0:6:36,
+ax2 = Axis(fig[1, 2]; xlabel="period", ylabel=L"j", yreversed=true, xticks=0:20:P,
            yticks=[1, 10, 20, 30, 40, 50], xgridvisible=false, ygridvisible=false)
 hlines!(ax1, [0.0]; color=AXIS, linewidth=1)
 hlines!(ax1, [fl]; color=MUTED, linewidth=1, linestyle=:dash)
@@ -180,14 +169,19 @@ for j = 1:N
              color=j in slow ? :white : c, strokecolor=j in slow ? c : :white, strokewidth=1.2)
 end
 ylims!(ax1, -0.72, 0.3)
-Legend(fig[0, 1], [MarkerElement(color=INK2, marker=:circle, markersize=10),
-                   MarkerElement(color=INK2, marker=:utriangle, markersize=10),
-                   MarkerElement(color=INK2, marker=:diamond, markersize=10),
-                   MarkerElement(color=:white, marker=:circle, markersize=10, strokecolor=INK2,
-                                 strokewidth=1.2),
-                   MarkerElement(; ring..., markersize=13)],
-       ["real", "negative multiplier", "complex pair", "not separated", "Arnoldi iteration"];
-       orientation=:horizontal, framevisible=false, labelcolor=INK2, tellwidth=false, nbanks=2)
+# the legend, with the hollow marker only when some exponents have not separated
+elements = [MarkerElement(color=INK2, marker=:circle, markersize=10),
+            MarkerElement(color=INK2, marker=:utriangle, markersize=10),
+            MarkerElement(color=INK2, marker=:diamond, markersize=10),
+            MarkerElement(; ring..., markersize=13)]
+labels   = ["real", "negative multiplier", "complex pair", "Arnoldi iteration"]
+if !isempty(slow)
+    push!(elements, MarkerElement(color=:white, marker=:circle, markersize=10, strokecolor=INK2,
+                                  strokewidth=1.2))
+    push!(labels, "not separated")
+end
+Legend(fig[0, 1], elements, labels; orientation=:horizontal, framevisible=false, labelcolor=INK2,
+       tellwidth=false, nbanks=2)
 
 # the change of each exponent from one period to the next, on a logarithmic scale
 C = [log10(max(abs(deep.history[p][j] - deep.history[p-1][j]), 1e-16)) for p = 2:P, j = 1:N]

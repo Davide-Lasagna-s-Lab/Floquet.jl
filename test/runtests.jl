@@ -915,6 +915,62 @@ end
     end < 1e-8
 end
 
+@testset "Arnoldi                                " begin
+    # the Lorenz orbit AB: with N = 3, the dimension of the system, the Ritz
+    # values are the eigenvalues of the monodromy matrix. The two leading
+    # exponents agree with those of the periodic Schur decomposition, and the
+    # stable one, whose multiplier is 1e-10 times the leading one, only to
+    # about 1e-5, as the eigenvalues of the monodromy matrix in Table 1
+    n     = 4000
+    store = periodic_storage(lorenz, x0_AB, T_AB, n)
+    schur = floquet(lorenz_tan, 3, T_AB/n, store; λtol=1e-10)
+    ritz  = floquet(lorenz_tan, 3, T_AB/n, store; algorithm=:arnoldi)
+    @test ritz.periods == 3
+    @test ritz.history === nothing
+    @test maximum(abs, ritz.exponents[1:2] .- schur.exponents[1:2]) < 1e-8
+    @test abs(ritz.exponents[3] - schur.exponents[3]) < 1e-4
+
+    # the same with an IMEX scheme
+    ritz = floquet(lorenz_tan_ex, 3, T_AB/n, store; A=Diagonal([-10.0, -1.0, -8/3]),
+                   method=:CB4R3R4, algorithm=:arnoldi)
+    @test maximum(abs, ritz.exponents[1:2] .- schur.exponents[1:2]) < 1e-7
+
+    # the time-periodic system with negative multipliers and a pair of the
+    # testset of the Floquet vectors with negative multipliers: four steps in
+    # four dimensions give the multipliers, with the conventions of floquet
+    # for the imaginary parts and the order
+    n = 4
+    T = 2.0
+    ω = π/T
+    rotation(t) = [cos(ω*t) -sin(ω*t) 0 0;
+                   sin(ω*t)  cos(ω*t) 0 0;
+                   0         0        1 0;
+                   0         0        0 1]
+    Ω = [0 -ω 0 0; ω 0 0 0; 0 0 0 0; 0 0 0 0]
+    W = [1.0 0.3; -0.2 0.8]
+    A = zeros(n, n)
+    A[1:2, 1:2] = W*Diagonal([0.3, -0.5])/W + Ω[1:2, 1:2]
+    A[3:4, 3:4] = [-0.2 0.9; -0.4 -0.2]
+    L(t, u, y, dydt) = mul!(dydt, rotation(t)*A*rotation(t)', y)
+    ritz = floquet(L, n, 1e-3, zero_orbit(n, T); algorithm=:arnoldi)
+    @test maximum(abs, ritz.exponents .- [0.3 + im*π/T, -0.2 + 0.6im, -0.2 - 0.6im,
+                                          -0.5 + im*π/T]) < 1e-8
+
+    # the shift of a relative periodic orbit, on the system of the testset of
+    # the shift
+    T = 3.0
+    C = [0.2 -0.5 0; 0.5 0.2 0; 0 0 -0.7]
+    S = [cos(0.9) -sin(0.9) 0; sin(0.9) cos(0.9) 0; 0 0 1]
+    LC(t, u, y, dydt) = mul!(dydt, C, y)
+    ritz = floquet(LC, 3, 1e-3, zero_orbit(3, T); shift=q -> (q .= S*q; q), algorithm=:arnoldi)
+    @test distance(ritz.exponents, [0.2 + im*(0.5 + 0.9/T), 0.2 - im*(0.5 + 0.9/T), -0.7], T) < 1e-8
+
+    # the keyword and the vectors it cannot give
+    @test_throws ArgumentError floquet(lorenz_tan, 3, T_AB/4000, store; algorithm=:lanczos)
+    @test_throws ArgumentError floquet(lorenz_tan, 3, T_AB/4000, store; algorithm=:arnoldi,
+                                       vectors=:schur)
+end
+
 @testset "verbose                                " begin
     # one line per period of each sweep, and the same results as without
     T     = T_AB

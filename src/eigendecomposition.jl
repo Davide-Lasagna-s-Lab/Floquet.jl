@@ -226,6 +226,79 @@ function covariant(U, V, pairs)
 end
 
 """
+    arnoldi(L, A, scheme, dt, store, qs, shift, λtol, verbose)
+
+The exponents of the Ritz values of `N = length(qs)` steps of the Arnoldi
+iteration on the monodromy matrix of the orbit in `store`, from the
+normalised sum of the vectors `qs`. Each product with the monodromy matrix is
+one integration of the linearised equations over the period, with `L`, `A`,
+`scheme` and the step `dt`, followed by `shift`. Gram-Schmidt runs twice at
+each step. Return the named tuple of `floquet`, with the `N` exponents sorted
+as there, `N` products as `periods`, and `converged` true when the residual
+estimates of all the Ritz pairs, relative to their Ritz values, are below
+`λtol`. The other fields are `nothing`.
+"""
+function arnoldi(L, A, scheme, dt, store, qs::Coupled{N}, shift, λtol, verbose) where {N}
+    # ---- the linearised equations for one vector, over the period ----
+    span = timespan(store)
+    T    = span[2] - span[1]
+    x    = similar(qs[1])
+    F    = A === nothing ?
+           flow(L, scheme(similar(x), ContinuousMode(false)), TimeStepFromStorage(dt)) :
+           flow(L, A, scheme(similar(x), ContinuousMode(false)), TimeStepFromStorage(dt))
+
+    # ---- the first vector of the Krylov basis, the normalised sum of qs ----
+    V = [similar(x) for j = 1:N+1]
+    V[1] .= 0
+    for i = 1:N
+        V[1] .+= qs[i]
+    end
+    V[1] ./= norm(V[1])
+
+    # ---- N steps, each with one integration over the period and the shift ----
+    H = zeros(N + 1, N)
+    for j = 1:N
+        V[j+1] .= V[j]
+        F(V[j+1], store, span)
+        shift(V[j+1])
+        for _ in 1:2, i in 1:j
+            h = dot(V[i], V[j+1])
+            H[i, j] += h
+            V[j+1] .-= h .* V[i]
+        end
+        H[j+1, j] = norm(V[j+1])
+        V[j+1] ./= H[j+1, j]
+        if verbose
+            @printf "arnoldi %3d: %.3e\n" j H[j+1, j]
+            flush(stdout)
+        end
+    end
+
+    # ---- the exponents of the Ritz values, sorted as by floquet ----
+    E  = eigen(H[1:N, 1:N])
+    λs = log.(complex.(E.values)) ./ T
+    p  = sortperm(λs; by=z -> (real(z), imag(z)), rev=true)
+
+    # ---- the residual estimates of the Ritz pairs, relative to their Ritz values ----
+    ρ = abs.(H[N+1, N] .* E.vectors[N, p]) ./ abs.(E.values[p])
+
+    # ---- assemble ----
+    return (exponents = λs[p],
+            converged = all(<(λtol), ρ),
+              periods = N,
+              history = nothing,
+                order = nothing,
+                pairs = nothing,
+                times = nothing,
+                bases = nothing,
+           stretching = nothing,
+     adjointexponents = nothing,
+         adjointbases = nothing,
+       floquetvectors = nothing,
+       adjointvectors = nothing)
+end
+
+"""
     floquet(L, N::Int, dt::Real, store::RAMStorage; kwargs...)
 
 Compute the `N` leading Floquet exponents of the periodic or relative
@@ -245,6 +318,8 @@ than `λtol`. With `vectors = :floquet` the same iteration then runs
 backwards in time with the adjoint linearised equations, and the Floquet
 vectors and their adjoints follow at each time from an LU factorisation
 without pivoting of the inner products of the forward and adjoint bases.
+With `algorithm = :arnoldi`, the exponents are instead those of the
+eigenvalues of the monodromy matrix, from the Arnoldi iteration.
 
 `L` is the linearised operator, a callable `L(t, u, y, dydt)` that writes
 in `dydt` the action on the tangent vector `y` of the Jacobian at the base
@@ -300,10 +375,25 @@ relative periodic orbits. `dt` is the time step of the tangent integration.
   - `maxiter = 50`: maximum number of periods, of each sweep.
   - `verbose = false`: print the exponents after each period, and those of
     the adjoint sweep.
+  - `algorithm = :schur`: with `:arnoldi`, compute instead the exponents of
+    the `N` Ritz values of `N` steps of the Arnoldi iteration on the
+    monodromy matrix, the classic method, from the normalised sum of the
+    initial vectors. Each product with the monodromy matrix is one
+    integration of the linearised equations over the period, followed by
+    `shift`. The exponents of the multipliers smaller than about `ε` times the
+    leading one are then wrong, with `ε` the machine precision, and the
+    trailing Ritz values converge last. `vectors` must be `:none`, and
+    `oneevery`, `θtol`, `maxiter`, `Ladj` and `shiftadj` are not used. With
+    `verbose`, the norm of each new Krylov vector before its normalisation
+    is printed.
 
 # Returns
 A named tuple with the following fields. Those that were not requested
-with `vectors` are `nothing`.
+with `vectors` are `nothing`. With `algorithm = :arnoldi`, `periods` is `N`,
+the number of products with the monodromy matrix, `converged` is `true` when
+the residual estimates of all the Ritz pairs, relative to their Ritz values,
+are below `λtol`, and the fields after `exponents`, `converged` and
+`periods` are `nothing`.
   - `exponents`: `N` complex Floquet exponents, the log-multipliers divided
     by `T`, sorted by decreasing real part. Imaginary parts are defined
     modulo `2π/T` and lie in `[-π/T, π/T]`: a negative real multiplier has
@@ -364,7 +454,8 @@ function floquet(L,
                  λtol::Real=1e-7,
                  θtol::Real=1e-7,
                  maxiter::Int=50,
-                 verbose::Bool=false)
+                 verbose::Bool=false,
+                 algorithm::Symbol=:schur)
 
     # ---- input checks ----
     # A periodic storage with a sample at (or just before) t = T duplicates
@@ -380,6 +471,10 @@ function floquet(L,
         throw(ArgumentError("methods :RK4 and :RK8 are explicit, use an IMEX method with A"))
     vectors in (:none, :schur, :floquet) ||
         throw(ArgumentError("vectors must be :none, :schur or :floquet"))
+    algorithm in (:schur, :arnoldi) ||
+        throw(ArgumentError("algorithm must be :schur or :arnoldi"))
+    (algorithm === :schur || vectors === :none) ||
+        throw(ArgumentError("algorithm = :arnoldi gives no vectors, use vectors = :none"))
     (vectors !== :floquet || Ladj !== nothing) ||
         throw(ArgumentError("vectors = :floquet needs the adjoint operator Ladj"))
     (vectors !== :floquet || shift === identity || shiftadj !== identity) ||
@@ -390,9 +485,10 @@ function floquet(L,
         throw(ArgumentError("periodic storage holds a sample at or near t = T, " *
                             "build it with storelast=false"))
 
-    # ---- period of the base orbit ----
-    span = timespan(store)
-    T    = span[2] - span[1]
+    # ---- period of the base orbit, and the Flows scheme named `method` ----
+    span   = timespan(store)
+    T      = span[2] - span[1]
+    scheme = getfield(Flows, method)
 
     # ---- initial tangent vectors: `init`, or the first N canonical directions ----
     x       = similar(samples(store)[1])
@@ -408,17 +504,20 @@ function floquet(L,
     gs!(qs_init, false)
     qs_next = copy(qs_init)
 
+    # ---- the Arnoldi iteration on the monodromy matrix, from the sum of these ----
+    algorithm === :arnoldi &&
+        return arnoldi(L, A, scheme, dt, store, qs_init, shift, λtol, verbose)
+
     # ---- tangent flow ----
     # N linearised equations, each one seeing only its own tangent vector and
     # the base orbit interpolated from `store`. They share `L` and `A`, which
     # are called for one vector at a time. Copies would duplicate the FFT
     # plans that an operator may own, which must not be copied.
-    scheme = getfield(Flows, method) # the Flows scheme named `method`
-    ψ      = flow(couple(ntuple(i -> L, N)...),
-                  couple(ntuple(i -> A, N)...),
-                  CallDependency(ntuple(i -> (i,), N)...),
-                  scheme(couplecopy(N, x), ContinuousMode(false)),
-                  TimeStepFromStorage(dt))
+    ψ = flow(couple(ntuple(i -> L, N)...),
+             couple(ntuple(i -> A, N)...),
+             CallDependency(ntuple(i -> (i,), N)...),
+             scheme(couplecopy(N, x), ContinuousMode(false)),
+             TimeStepFromStorage(dt))
 
     # ---- monitor ----
     # Gram-Schmidt on the tangent vectors at the start of each period, every
